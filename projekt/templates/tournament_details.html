@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Punkty - {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <a href="/tournaments" style="color: #667eea; text-decoration: none; margin-bottom: 1rem; display: inline-block;">← Wróć do listy turniejów</a>
+    
+    <div style="text-align: center;">
+        <h1 style="margin-bottom: 0.5rem;">{{ tournament.name }}</h1>
+        <p style="font-size: 1.2rem; color: #666;">
+            Waga turnieju: <span style="font-weight: bold; color: #2ecc71;">{{ "%.2f"|format(tournament.weight) }}x</span>
+        </p>
+        <p style="font-size: 0.9rem; color: #999;">Punkty wpisane tutaj zostaną pomnożone przez wagę w rankingu głównym.</p>
+    </div>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Przyznaj punkty zawodnikom</h2>
+        <input type="text" id="filterInput" placeholder="🔍 Szukaj gracza..." onkeyup="filterTable()" style="width: 300px; margin-bottom: 0;">
+    </div>
+
+    <table id="playersTable">
+        <thead>
+            <tr>
+                <th>Zawodnik</th>
+                <th>Drużyna</th>
+                <th style="width: 150px;">Punkty</th>
+                <th style="width: 100px;">Zapisz</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for player in players %}
+            <tr>
+                <td style="font-weight: 600;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        {% if player.photo_url %}
+                        <img src="{{ player.photo_url }}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
+                        {% endif %}
+                        {{ player.nickname }}
+                    </div>
+                </td>
+                <td>{{ player.team.name if player.team else '-' }}</td>
+                <td>
+                    <input type="number" step="1" min="0" 
+                           id="points-{{ player.id }}" 
+                           value="{{ points_dict.get(player.id, '') }}"
+                           placeholder="0"
+                           style="margin-bottom: 0;">
+                </td>
+                <td>
+                    <button onclick="savePoints({{ tournament.id }}, {{ player.id }})" class="btn" style="padding: 0.5rem 1rem;">💾</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    function savePoints(tournamentId, playerId) {
+        const input = document.getElementById(`points-${playerId}`);
+        const pointsValue = parseFloat(input.value);
+        
+        if (isNaN(pointsValue)) {
+            alert("Wpisz poprawną liczbę punktów!");
+            return;
+        }
+
+        const btn = input.parentElement.nextElementSibling.querySelector('button');
+        const originalText = btn.textContent;
+        btn.textContent = "⏳";
+
+        fetch('/api/ranking_points/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                tournament_id: tournamentId,
+                player_id: playerId,
+                points: pointsValue
+            })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Błąd zapisu');
+            return response.json();
+        })
+        .then(data => {
+            btn.textContent = "✅";
+            setTimeout(() => btn.textContent = originalText, 1500);
+        })
+        .catch(err => {
+            alert('Błąd: ' + err.message);
+            btn.textContent = "❌";
+        });
+    }
+
+    function filterTable() {
+        const input = document.getElementById("filterInput");
+        const filter = input.value.toUpperCase();
+        const table = document.getElementById("playersTable");
+        const tr = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < tr.length; i++) {
+            const td = tr[i].getElementsByTagName("td")[0];
+            if (td) {
+                const txtValue = td.textContent || td.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

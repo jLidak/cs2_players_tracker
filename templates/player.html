@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}{{ player.nickname }} - CS2 Player Tracker{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <a href="/" style="color: #667eea; text-decoration: none;">← Powrót</a>
+        <button onclick="deletePlayer({{ player.id }})" class="btn btn-danger">Usuń gracza</button>
+    </div>
+
+    <div style="display: flex; gap: 2rem; align-items: start;">
+        <div style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+            {% if player.photo_url %}
+            <img src="{{ player.photo_url }}" alt="{{ player.nickname }}" style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover; border: 4px solid #667eea;">
+            {% else %}
+            <div style="width: 200px; height: 200px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; font-size: 5rem;"></div>
+            {% endif %}
+
+            <button onclick="updatePhoto({{ player.id }}, '{{ player.photo_url or '' }}')" class="btn" style="margin-top: 10px; font-size: 0.8rem; background-color: #3498db;">Zmień zdjęcie</button>
+             <button onclick="updateNickname({{ player.id }}, '{{ player.nickname }}')" class="btn" style="margin-top: 5px; font-size: 0.8rem; background-color: #9b59b6;">Zmień nick</button>
+        </div>
+
+        <div style="flex: 1;">
+            <h1>{{ player.nickname }}</h1>
+            {% if player.team %}
+            <p style="font-size: 1.2rem; color: #666; margin-bottom: 1rem;">
+                {% if player.team.logo_url %}
+                <img src="{{ player.team.logo_url }}" alt="{{ player.team.name }}" style="width: 30px; height: 30px; vertical-align: middle; margin-right: 0.5rem;">
+                {% endif %}
+                {{ player.team.name }}
+            </p>
+            {% else %}
+            <p style="font-size: 1.2rem; color: #999;">Bez drużyny</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Historia Meczów</h2>
+
+    {% if matches_with_ratings %}
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Turniej</th>
+                <th>Faza</th>
+                <th>Mecz</th>
+                <th>Wynik</th>
+                <th>Rating</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in matches_with_ratings %}
+            {% set match = item.match %}
+            <tr>
+                <td>{{ match.date }}</td>
+                <td>{{ match.tournament.name }}</td>
+                <td>{{ match.phase }}</td>
+                <td>
+                    {{ match.team1.name }} vs {{ match.team2.name }}
+                </td>
+                <td>{{ match.result if match.result else 'TBD' }}</td>
+                <td style="font-weight: bold; color: {% if item.rating and item.rating >= 1.2 %}#2ecc71{% elif item.rating and item.rating >= 1.0 %}#f39c12{% else %}#e74c3c{% endif %};">
+                    {{ "%.2f"|format(item.rating) if item.rating else '-' }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: #999; text-align: center; padding: 2rem;">Brak meczów dla tego gracza</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    // --- NOWE FUNKCJE EDYCJI ---
+    function updatePhoto(playerId, oldUrl) {
+        const newUrl = prompt("Wklej nowy link do zdjęcia:", oldUrl);
+        if (newUrl === null) return;
+
+        fetch(`/api/players/${playerId}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ photo_url: newUrl })
+        })
+        .then(res => {
+            if(res.ok) window.location.reload();
+            else alert("Błąd aktualizacji zdjęcia");
+        });
+    }
+
+    function updateNickname(playerId, oldNick) {
+        const newNick = prompt("Wpisz nowy nick:", oldNick);
+        if (newNick === null || newNick === oldNick) return;
+
+        fetch(`/api/players/${playerId}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ nickname: newNick })
+        })
+        .then(res => {
+            if(res.ok) window.location.reload();
+            else alert("Błąd aktualizacji nicku (może jest zajęty?)");
+        });
+    }
+
+    function deletePlayer(playerId) {
+        if (!confirm('Czy na pewno chcesz usunąć tego gracza?')) return;
+        fetch(`/api/players/${playerId}`, { method: 'DELETE' })
+        .then(res => {
+            if(res.ok) window.location.href = '/';
+            else alert("Błąd usuwania");
+        });
+    }
+</script>
+{% endblock %}

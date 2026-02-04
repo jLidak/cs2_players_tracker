@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Drużyny - CS2 Player Tracker{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>Zarządzanie Drużynami</h1>
+</div>
+
+<div class="card">
+    <h2>Dodaj Nową Drużynę</h2>
+    <form onsubmit="createTeam(event)">
+        <div class="form-group">
+            <label for="teamName">Nazwa drużyny:</label>
+            <input type="text" id="teamName" required>
+        </div>
+        <div class="form-group">
+            <label for="teamLogo">URL Logo:</label>
+            <input type="text" id="teamLogo" placeholder="https://example.com/logo.png">
+        </div>
+        <button type="submit" class="btn">Dodaj Drużynę</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Lista Drużyn</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 80px;">Logo</th>
+                <th>Nazwa</th>
+                <th style="width: 200px;">Akcje</th>
+            </tr>
+        </thead>
+        <tbody id="teamsTable">
+            {% for team in teams %}
+            <tr>
+                <td>
+                    {% if team.logo_url %}
+                    <img src="{{ team.logo_url }}" alt="{{ team.name }}" style="width: 50px; height: 50px; object-fit: contain;">
+                    {% else %}
+                    <div style="width: 50px; height: 50px; background: #ddd; display: flex; align-items: center; justify-content: center;">🛡️</div>
+                    {% endif %}
+                </td>
+                <td>{{ team.name }}</td>
+                <td>
+                    <button onclick="editTeam({{ team.id }}, '{{ team.name }}', '{{ team.logo_url or '' }}')" class="btn" style="padding: 0.5rem 1rem; font-size: 0.9rem; background-color: #3498db; margin-right: 5px;">Edytuj</button>
+                    <button onclick="deleteTeam({{ team.id }})" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Usuń</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    function createTeam(event) {
+        event.preventDefault();
+        const name = document.getElementById('teamName').value;
+        const logo_url = document.getElementById('teamLogo').value || null;
+
+        fetch('/api/teams/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name, logo_url })
+        }).then(res => {
+            if(res.ok) window.location.reload();
+            else alert("Błąd tworzenia");
+        });
+    }
+
+    // --- NOWA FUNKCJA EDYCJI ---
+    function editTeam(id, oldName, oldLogo) {
+        const newName = prompt("Edytuj nazwę drużyny:", oldName);
+        if (newName === null) return; // Anulowano
+
+        const newLogo = prompt("Wklej nowy link do logo (zostaw puste aby usunąć):", oldLogo);
+        if (newLogo === null) return; // Anulowano
+
+        const body = { name: newName };
+        // Jeśli logo jest puste, wyślij null, w przeciwnym razie wyślij string
+        if (newLogo.trim() !== "") {
+            body.logo_url = newLogo;
+        } else {
+            body.logo_url = null;
+        }
+
+        fetch(`/api/teams/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Błąd edycji');
+            return response.json();
+        })
+        .then(() => window.location.reload())
+        .catch(err => alert(err.message));
+    }
+
+    function deleteTeam(teamId) {
+        if (!confirm('Czy na pewno chcesz usunąć tę drużynę?')) return;
+        fetch(`/api/teams/${teamId}`, { method: 'DELETE' })
+        .then(res => {
+            if(res.ok) window.location.reload();
+            else alert("Błąd usuwania (sprawdź czy drużyna nie gra w meczach)");
+        });
+    }
+</script>
+{% endblock %}

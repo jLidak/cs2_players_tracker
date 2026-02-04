@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Mecze - CS2 Player Tracker{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>Zarządzanie Meczami</h1>
+</div>
+
+<div class="card">
+    <h2>Dodaj Nowy Mecz</h2>
+    <form onsubmit="createMatch(event)">
+        <div class="form-group">
+            <label for="matchTournament">Turniej:</label>
+            <select id="matchTournament" required>
+                <option value="">Wybierz turniej</option>
+                {% for tournament in tournaments %}
+                <option value="{{ tournament.id }}">{{ tournament.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="matchPhase">Faza:</label>
+            <select id="matchPhase" required>
+                <option value="Group">Group Stage</option>
+                <option value="Playoff">Playoff</option>
+                <option value="Quarterfinal">Quarterfinal</option>
+                <option value="Semifinal">Semifinal</option>
+                <option value="Final">Final</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="matchDate">Data:</label>
+            <input type="date" id="matchDate" required>
+        </div>
+        <div class="form-group">
+            <label for="matchFormat">Format:</label>
+            <select id="matchFormat" required>
+                <option value="BO1">BO1</option>
+                <option value="BO3">BO3</option>
+                <option value="BO5">BO5</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="matchTeam1">Drużyna 1:</label>
+            <select id="matchTeam1" required>
+                <option value="">Wybierz drużynę</option>
+                {% for team in teams %}
+                <option value="{{ team.id }}">{{ team.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="matchTeam2">Drużyna 2:</label>
+            <select id="matchTeam2" required>
+                <option value="">Wybierz drużynę</option>
+                {% for team in teams %}
+                <option value="{{ team.id }}">{{ team.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="matchResult">Wynik (opcjonalnie):</label>
+            <input type="text" id="matchResult" placeholder="2:1">
+        </div>
+        <button type="submit" class="btn">Dodaj Mecz</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Lista Meczów</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Turniej</th>
+                <th>Faza</th>
+                <th>Format</th>
+                <th>Mecz</th>
+                <th>Wynik</th>
+                <th style="width: 150px;">Akcje</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for match in matches %}
+            <tr>
+                <td>{{ match.date }}</td>
+                <td>{{ match.tournament.name }}</td>
+                <td>{{ match.phase }}</td>
+                <td>{{ match.format }}</td>
+                <td>{{ match.team1.name }} vs {{ match.team2.name }}</td>
+                <td>{{ match.result if match.result else 'TBD' }}</td>
+                <td>
+                    <a href="/match/{{ match.id }}" class="btn" style="padding: 0.5rem 1rem; font-size: 0.9rem; background-color: #2ecc71; text-decoration: none; margin-right: 5px;">Oceny</a>
+                    <button onclick="deleteMatch({{ match.id }})" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Usuń</button>
+                </td>
+
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    function createMatch(event) {
+        event.preventDefault();
+        
+        const tournament_id = parseInt(document.getElementById('matchTournament').value);
+        const phase = document.getElementById('matchPhase').value;
+        const date = document.getElementById('matchDate').value;
+        const format = document.getElementById('matchFormat').value;
+        const team1_id = parseInt(document.getElementById('matchTeam1').value);
+        const team2_id = parseInt(document.getElementById('matchTeam2').value);
+        const result = document.getElementById('matchResult').value || null;
+        
+        fetch('/api/matches/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                tournament_id,
+                phase,
+                date,
+                format,
+                team1_id,
+                team2_id,
+                result
+            })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Błąd tworzenia meczu');
+            return response.json();
+        })
+        .then(data => {
+            alert('Mecz utworzony!');
+            window.location.reload();
+        })
+        .catch(err => {
+            alert('Błąd: ' + err.message);
+        });
+    }
+    
+    function deleteMatch(matchId) {
+        if (!confirm('Czy na pewno chcesz usunąć ten mecz?')) return;
+        
+        fetch(`/api/matches/${matchId}`, {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Błąd usuwania');
+            return response.json();
+        })
+        .then(data => {
+            alert('Mecz usunięty!');
+            window.location.reload();
+        })
+        .catch(err => {
+            alert('Błąd: ' + err.message);
+        });
+    }
+</script>
+{% endblock %}

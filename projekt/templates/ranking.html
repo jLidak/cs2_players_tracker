@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Ranking - CS2 Player Tracker{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>Ranking Graczy</h1>
+    <p>Ranking obliczany na podstawie wzoru: Suma (Punkty x Waga Turnieju)</p>
+</div>
+
+<div class="card">
+    {% if ranking %}
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50px; text-align: center;">#</th>
+                <th style="width: 80px;"></th>
+                <th>Gracz</th>
+                <th>Drużyna</th>
+                <th style="text-align: right;">Punkty</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in ranking %}
+            <tr style="cursor: pointer;" onclick="window.location.href='/player/{{ entry.player_id }}'">
+                <td style="text-align: center; font-weight: bold; font-size: 1.2rem;">
+                    {% if loop.index == 1 %}
+                    1
+                    {% elif loop.index == 2 %}
+                    2
+                    {% elif loop.index == 3 %}
+                    3
+                    {% else %}
+                    {{ loop.index }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if entry.photo_url %}
+                    <img src="{{ entry.photo_url }}" alt="{{ entry.nickname }}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                    {% else %}
+                    <div style="width: 50px; height: 50px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center;">👤</div>
+                    {% endif %}
+                </td>
+                <td style="font-weight: 600;">{{ entry.nickname }}</td>
+                <td>{{ entry.team_name if entry.team_name else '-' }}</td>
+                <td style="text-align: right; font-weight: bold; color: #667eea;">{{ "%.2f"|format(entry.total_points) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: #999; text-align: center; padding: 2rem;">Brak danych rankingowych</p>
+    {% endif %}
+</div>
+{% endblock %}

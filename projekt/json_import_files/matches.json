@@ -1,0 +1,47 @@
+[
+  {
+    "tournament_id": 1,
+    "phase": "Group A Upper Final",
+    "date": "2026-02-05",
+    "format": "BO3",
+    "team1_id": 5,
+    "team2_id": 1,
+    "result": "2:1"
+  },
+  {
+    "tournament_id": 1,
+    "phase": "Semi-final",
+    "date": "2026-02-10",
+    "format": "BO3",
+    "team1_id": 2,
+    "team2_id": 5,
+    "result": "1:2"
+  },
+  {
+    "tournament_id": 1,
+    "phase": "Grand Final",
+    "date": "2026-02-12",
+    "format": "BO5",
+    "team1_id": 5,
+    "team2_id": 4,
+    "result": "3:0"
+  },
+  {
+    "tournament_id": 2,
+    "phase": "Elimination Stage",
+    "date": "2026-05-15",
+    "format": "BO1",
+    "team1_id": 3,
+    "team2_id": 1,
+    "result": "11:13"
+  },
+  {
+    "tournament_id": 2,
+    "phase": "Quarter-final",
+    "date": "2026-05-20",
+    "format": "BO3",
+    "team1_id": 1,
+    "team2_id": 6,
+    "result": "2:0"
+  }
+]

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Szczegóły Meczu - CS2 Tracker{% endblock %}
+
+{% block content %}
+<div class="card">
+    <a href="/matches" style="color: #667eea; text-decoration: none; margin-bottom: 1rem; display: inline-block;">← Wróć do listy meczów</a>
+    
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <h3 style="color: #666;">{{ match.tournament.name }} - {{ match.phase }}</h3>
+        <h1 style="font-size: 2.5rem; margin: 1rem 0;">
+            {{ match.team1.name }} <span style="color: #ccc;">vs</span> {{ match.team2.name }}
+        </h1>
+        <p style="font-size: 1.2rem; font-weight: bold;">
+            Wynik: {{ match.result if match.result else '---' }}
+        </p>
+        <p>Data: {{ match.date }} | Format: {{ match.format }}</p>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+    <div class="card">
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+            {% if match.team1.logo_url %}
+            <img src="{{ match.team1.logo_url }}" style="width: 40px; height: 40px;">
+            {% endif %}
+            <h2>{{ match.team1.name }}</h2>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Gracz</th>
+                    <th style="width: 120px;">Rating</th>
+                    <th style="width: 80px;">Akcja</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for player in team1_players %}
+                <tr>
+                    <td>{{ player.nickname }}</td>
+                    <td>
+                        <input type="number" step="0.01" min="0" max="10" 
+                               id="rating-{{ player.id }}" 
+                               value="{{ ratings_dict.get(player.id, '') }}"
+                               style="width: 80px; margin-bottom: 0;">
+                    </td>
+                    <td>
+                        <button onclick="saveRating({{ match.id }}, {{ player.id }})" class="btn" style="padding: 0.5rem; font-size: 0.8rem;">💾</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+            {% if match.team2.logo_url %}
+            <img src="{{ match.team2.logo_url }}" style="width: 40px; height: 40px;">
+            {% endif %}
+            <h2>{{ match.team2.name }}</h2>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Gracz</th>
+                    <th style="width: 120px;">Rating</th>
+                    <th style="width: 80px;">Akcja</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for player in team2_players %}
+                <tr>
+                    <td>{{ player.nickname }}</td>
+                    <td>
+                        <input type="number" step="0.01" min="0" max="10" 
+                               id="rating-{{ player.id }}" 
+                               value="{{ ratings_dict.get(player.id, '') }}"
+                               style="width: 80px; margin-bottom: 0;">
+                    </td>
+                    <td>
+                        <button onclick="saveRating({{ match.id }}, {{ player.id }})" class="btn" style="padding: 0.5rem; font-size: 0.8rem;">💾</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    function saveRating(matchId, playerId) {
+        const input = document.getElementById(`rating-${playerId}`);
+        const ratingValue = parseFloat(input.value);
+        
+        if (isNaN(ratingValue)) {
+            alert("Wpisz poprawną liczbę!");
+            return;
+        }
+
+        const btn = input.parentElement.nextElementSibling.querySelector('button');
+        const originalText = btn.textContent;
+        btn.textContent = "⏳";
+
+        fetch('/api/player_ratings/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                match_id: matchId,
+                player_id: playerId,
+                rating: ratingValue
+            })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Błąd zapisu');
+            return response.json();
+        })
+        .then(data => {
+            btn.textContent = "✅";
+            setTimeout(() => btn.textContent = originalText, 1500);
+        })
+        .catch(err => {
+            alert('Błąd: ' + err.message);
+            btn.textContent = "❌";
+        });
+    }
+</script>
+{% endblock %}

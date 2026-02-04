@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Gracze - CS2 Player Tracker{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>CS2 Player Tracker</h1>
+    <p>Śledź statystyki najlepszych graczy Counter-Strike 2</p>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+        <h2>Gracze</h2>
+        <div style="display: flex; gap: 10px;">
+            <a href="/api/export/" class="btn" download="database.json">Eksport JSON</a>
+<!--            <button onclick="document.getElementById('importFile').click()" class="btn">Import JSON</button>-->
+<!--            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">-->
+
+            <button onclick="clearDatabase()" class="btn btn-danger" style="background-color: #c0392b;">Wyczyść całą bazę</button>
+        </div>
+    </div>
+
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Wyszukaj gracza..." oninput="searchPlayers()">
+    </div>
+
+    <div class="player-grid" id="playerGrid">
+        {% for player in players %}
+        <div class="player-card" onclick="window.location.href='/player/{{ player.id }}'">
+            {% if player.photo_url %}
+            <img src="{{ player.photo_url }}" alt="{{ player.nickname }}" class="player-photo">
+            {% else %}
+            <div style="width: 120px; height: 120px; border-radius: 50%; background: #ddd; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 3rem;">👤</div>
+            {% endif %}
+            <h3>{{ player.nickname }}</h3>
+            {% if player.team %}
+            <p style="color: #666;">{{ player.team.name }}</p>
+            {% else %}
+            <p style="color: #999;">Bez drużyny</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    let allPlayers = {{ players | tojson }};
+
+    function searchPlayers() {
+        const query = document.getElementById('searchInput').value;
+
+        if (!query) {
+            displayAllPlayers();
+            return;
+        }
+
+        fetch(`/api/search/players/?query=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(players => {
+                displayPlayers(players);
+            })
+            .catch(err => {
+                console.error('Search error:', err);
+                displayAllPlayers();
+            });
+    }
+
+    function displayPlayers(players) {
+        const grid = document.getElementById('playerGrid');
+        grid.innerHTML = '';
+
+        players.forEach(player => {
+            const card = document.createElement('div');
+            card.className = 'player-card';
+            card.onclick = () => window.location.href = `/player/${player.id}`;
+
+            let photoHtml = '';
+            if (player.photo_url) {
+                photoHtml = `<img src="${player.photo_url}" alt="${player.nickname}" class="player-photo">`;
+            } else {
+                photoHtml = '<div style="width: 120px; height: 120px; border-radius: 50%; background: #ddd; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 3rem;">👤</div>';
+            }
+
+            let teamHtml = '';
+            if (player.team) {
+                teamHtml = `<p style="color: #666;">${player.team.name}</p>`;
+            } else {
+                teamHtml = '<p style="color: #999;">Bez drużyny</p>';
+            }
+
+            card.innerHTML = `
+                ${photoHtml}
+                <h3>${player.nickname}</h3>
+                ${teamHtml}
+            `;
+
+            grid.appendChild(card);
+        });
+    }
+
+    function displayAllPlayers() {
+        displayPlayers(allPlayers);
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/api/import/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert('Import zakończony pomyślnie!');
+            window.location.reload();
+        })
+        .catch(err => {
+            alert('Błąd importu: ' + err);
+        });
+    }
+
+    // --- NOWA FUNKCJA CZYSZCZENIA ---
+    function clearDatabase() {
+        // Podwójne potwierdzenie dla bezpieczeństwa
+        if (!confirm("UWAGA! Czy na pewno chcesz usunąć WSZYSTKIE dane z bazy?")) return;
+        if (!confirm("To jest operacja nieodwracalna. Potwierdź ostatecznie.")) return;
+
+        fetch('/api/database/clear', {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (response.ok) {
+                alert("Baza danych została wyczyszczona.");
+                window.location.reload();
+            } else {
+                alert("Wystąpił błąd podczas czyszczenia.");
+            }
+        })
+        .catch(err => alert("Błąd połączenia: " + err));
+    }
+</script>
+{% endblock %}

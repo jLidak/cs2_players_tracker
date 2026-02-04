@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Masowy Import JSON{% endblock %}
+
+{% block content %}
+<div class="card" style="text-align: center;">
+    <h1>Masowe Dodawanie (JSON)</h1>
+
+    <button onclick="autoImportFromFiles(event)" class="btn" style="background-color: #8e44ad; font-weight: bold; width: 100%; padding: 15px; font-size: 1.1rem; margin-top: 10px;">
+        Załaduj wstępną bazę z plików (Folder json_import_files)
+    </button>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+
+    <div class="card">
+        <h2>1. Drużyny</h2>
+        <p style="font-size: 0.8rem; color: #666;">Format: <code>[{"name": "...", "logo_url": "..."}]</code></p>
+        <textarea id="teamsJson" style="width: 100%; height: 150px; font-family: monospace;" placeholder='[
+  {
+    "name": "G2 Esports",
+    "logo_url": "https://..."
+  }
+]'></textarea>
+        <button onclick="sendData('teams')" class="btn" style="width: 100%; margin-top: 10px;">Dodaj Drużyny</button>
+    </div>
+
+    <div class="card">
+        <h2>2. Zawodnicy</h2>
+        <p style="font-size: 0.8rem; color: #666;">Format: <code>[{"nickname": "...", "team_id": 1}]</code></p>
+        <textarea id="playersJson" style="width: 100%; height: 150px; font-family: monospace;" placeholder='[
+  {
+    "nickname": "NiKo",
+    "team_id": 1,
+    "photo_url": "https://..."
+  }
+]'></textarea>
+        <button onclick="sendData('players')" class="btn" style="width: 100%; margin-top: 10px;">Dodaj Zawodników</button>
+    </div>
+
+    <div class="card">
+        <h2>3. Turnieje</h2>
+        <p style="font-size: 0.8rem; color: #666;">Format: <code>[{"name": "...", "weight": 2.0}]</code></p>
+        <textarea id="tournamentsJson" style="width: 100%; height: 150px; font-family: monospace;" placeholder='[
+  {
+    "name": "PGL Major",
+    "weight": 2.0
+  }
+]'></textarea>
+        <button onclick="sendData('tournaments')" class="btn" style="width: 100%; margin-top: 10px;">Dodaj Turnieje</button>
+    </div>
+
+    <div class="card">
+        <h2>4. Mecze</h2>
+        <p style="font-size: 0.8rem; color: #666;">
+            !!! Wymagane poprawne ID drużyn i turniejów. !!!<br>
+            Format daty: YYYY-MM-DD.
+        </p>
+        <textarea id="matchesJson" style="width: 100%; height: 150px; font-family: monospace;" placeholder='[
+  {
+    "tournament_id": 1,
+    "date": "2024-03-17",
+    "team1_id": 1,
+    "team2_id": 2,
+    "result": "13:10",
+    "phase": "Group A",
+    "format": "BO1"
+  }
+]'></textarea>
+        <button onclick="sendData('matches')" class="btn" style="width: 100%; margin-top: 10px; background-color: #2ecc71;">Dodaj Mecze</button>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    function sendData(type) {
+        const textarea = document.getElementById(`${type}Json`);
+        const btn = textarea.nextElementSibling;
+        const originalText = btn.textContent;
+
+        let jsonData;
+        try {
+            jsonData = JSON.parse(textarea.value);
+        } catch (e) {
+            alert("Błąd formatu JSON! Sprawdź przecinki i nawiasy.");
+            return;
+        }
+
+        btn.textContent = "Wysyłanie...";
+        btn.disabled = true;
+
+        fetch(`/api/batch/${type}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(jsonData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            btn.textContent = "Sukces!";
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.disabled = false;
+                textarea.value = ''; // Wyczyść pole po sukcesie
+            }, 2000);
+        })
+        .catch(err => {
+            alert("Błąd serwera: " + err);
+            btn.textContent = "Błąd";
+            btn.disabled = false;
+        });
+    }
+
+    function autoImportFromFiles(event) {
+        if (!confirm("Czy chcesz załadować dane z plików znajdujących się w folderze 'json_import_files'?")) return;
+
+        const btn = event.target;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = "⏳ Przetwarzanie plików...";
+        btn.disabled = true;
+
+        fetch('/api/import/auto-from-files', {
+            method: 'POST'
+        })
+        .then(response => {
+            if (!response.ok) return response.json().then(err => { throw new Error(err.detail || err.message || "Błąd") });
+            return response.json();
+        })
+        .then(data => {
+            alert(data.message);
+            window.location.href = '/'; // Przekieruj na główną, żeby zobaczyć efekty
+        })
+        .catch(err => {
+            alert("Błąd: " + err.message);
+            btn.innerHTML = "❌ Błąd";
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }, 3000);
+        });
+    }
+</script>
+{% endblock %}
