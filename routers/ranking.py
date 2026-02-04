@@ -1,115 +1,84 @@
 """
-Moduł odpowiedzialny za logikę rankingu.
-Oblicza punkty na podstawie wyników turniejowych i wag turniejów.
+Moduł obliczania rankingu.
 """
-from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from typing import List
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session, joinedload
 import models
 import schemas
 from database import get_db
 
-router = APIRouter(
-    tags=["Ranking"]
-)
-
+router = APIRouter(tags=["Ranking"])
 
 @router.get("/api/ranking/", response_model=List[schemas.RankingEntry])
-def get_ranking(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
-    """
-    Generuje globalny ranking graczy.
-
-    Algorytm:
-    1. Pobiera wszystkich graczy.
-    2. Dla każdego gracza pobiera punkty zdobyte w turniejach.
-    3. Mnoży punkty przez wagę danego turnieju (np. Major ma wagę = 1.0).
-    4. Sumuje wyniki i sortuje listę malejąco.
-
-    Args:
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        List[Dict[str, Any]]: Posortowana lista słowników zawierających dane gracza i jego całkowity wynik.
-    """
-    # Pobieramy podstawowe dane graczy i ich drużyn (Left Join)
-    ranking_data = db.query(
-        models.Player.id,
-        models.Player.nickname,
-        models.Player.photo_url,
-        models.Team.name.label("team_name")
-    ).outerjoin(models.Team, models.Player.team_id == models.Team.id).all()
+def get_ranking(db: Session = Depends(get_db)):
+    players = db.query(models.Player).options(
+        joinedload(models.Player.team),
+        joinedload(models.Player.tournament_performances).joinedload(models.PlayerTournamentPerformance.tournament),
+    ).all()
 
     ranking = []
-    for player_id, nickname, photo_url, team_name in ranking_data:
-        # Pobieramy punkty gracza ze wszystkich turniejów
-        points = db.query(models.PlayerRankingPoint).filter(
-            models.PlayerRankingPoint.player_id == player_id
-        ).all()
 
-        total = 0.0
-        for point in points:
-            # Znajdujemy wagę turnieju, aby przemnożyć punkty
-            tournament = db.query(models.Tournament).filter(
-                models.Tournament.id == point.tournament_id
-            ).first()
-            if tournament:
-                total += point.points * tournament.weight
+    for player in players:
+        total_points = 0.0
+
+        for perf in player.tournament_performances:
+            tour = perf.tournament
+
+            # Czy startuje od półfinału?
+            starts_in_semis = False
+            if tour.bracket_type == "Bracket 6 teams" and player.team_id:
+                participation = db.query(models.TournamentTeam).filter(
+                    models.TournamentTeam.tournament_id == tour.id,
+                    models.TournamentTeam.team_id == player.team_id
+                ).first()
+                if participation and participation.starts_in_semis:
+                    starts_in_semis = True
+
+            # 1. Overall
+            if perf.rating_overall and perf.rating_overall > 1.0:
+                total_points += (perf.rating_overall - 1.0) * 100 * tour.weight_overall
+
+            if starts_in_semis:
+                # --- SPECJALNA ŚCIEŻKA (Bracket 6 - Skip QF) ---
+                # Używamy wag zdefiniowanych ręcznie (override), a jeśli ich nie ma, dzielimy resztę
+
+                # Ustalanie wagi Półfinału
+                if tour.weight_semis_override is not None:
+                    semis_w = tour.weight_semis_override
+                else:
+                    semis_w = (1.0 - tour.weight_overall) / 2 # Fallback
+
+                # Ustalanie wagi Finału
+                if tour.weight_final_override is not None:
+                    final_w = tour.weight_final_override
+                else:
+                    final_w = (1.0 - tour.weight_overall) / 2 # Fallback
+
+                if perf.rating_semis and perf.rating_semis > 1.0:
+                    total_points += (perf.rating_semis - 1.0) * 100 * semis_w
+
+                if perf.rating_final and perf.rating_final > 1.0:
+                    total_points += (perf.rating_final - 1.0) * 100 * final_w
+
+            else:
+                # --- STANDARDOWA ŚCIEŻKA ---
+                if perf.rating_quarters and perf.rating_quarters > 1.0:
+                    total_points += (perf.rating_quarters - 1.0) * 100 * tour.weight_quarters
+
+                if perf.rating_semis and perf.rating_semis > 1.0:
+                    total_points += (perf.rating_semis - 1.0) * 100 * tour.weight_semis
+
+                if perf.rating_final and perf.rating_final > 1.0:
+                    total_points += (perf.rating_final - 1.0) * 100 * tour.weight_final
 
         ranking.append({
-            "player_id": player_id,
-            "nickname": nickname,
-            "team_name": team_name,
-            "total_points": total,
-            "photo_url": photo_url
+            "player_id": player.id,
+            "nickname": player.nickname,
+            "team_name": player.team.name if player.team else "No Team",
+            "total_points": round(total_points, 2),
+            "photo_url": player.photo_url
         })
 
-    # Sortowanie listy: gracze z największą liczbą punktów na górze
     ranking.sort(key=lambda x: x["total_points"], reverse=True)
     return ranking
-
-
-@router.post("/api/ranking_points/", response_model=schemas.PlayerRankingPoint)
-def create_ranking_point(points: schemas.PlayerRankingPointCreate,
-                         db: Session = Depends(get_db)) -> models.PlayerRankingPoint:
-    """
-    Przyznaje lub aktualizuje punkty rankingowe graczowi za konkretny turniej.
-    Jeśli wpis dla pary (gracz, turniej) już istnieje, aktualizuje liczbę punktów.
-
-    Args:
-        points (schemas.PlayerRankingPointCreate): Dane punktowe (ID gracza, ID turnieju, punkty).
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        models.PlayerRankingPoint: Utworzony lub zaktualizowany obiekt punktów.
-
-    Raises:
-        HTTPException(404): Jeśli gracz lub turniej nie istnieje w bazie.
-    """
-    # Sprawdzenie czy punkty już istnieją (Update zamiast Insert)
-    existing_points = db.query(models.PlayerRankingPoint).filter(
-        models.PlayerRankingPoint.tournament_id == points.tournament_id,
-        models.PlayerRankingPoint.player_id == points.player_id
-    ).first()
-
-    if existing_points:
-        existing_points.points = points.points
-        db.commit()
-        db.refresh(existing_points)
-        return existing_points
-
-    # Walidacja istnienia gracza
-    player = db.query(models.Player).filter(models.Player.id == points.player_id).first()
-    if not player:
-        raise HTTPException(status_code=404, detail="Player not found")
-
-    # Walidacja istnienia turnieju
-    tournament = db.query(models.Tournament).filter(models.Tournament.id == points.tournament_id).first()
-    if not tournament:
-        raise HTTPException(status_code=404, detail="Tournament not found")
-
-    # Tworzenie nowego wpisu
-    db_points = models.PlayerRankingPoint(**points.model_dump())
-    db.add(db_points)
-    db.commit()
-    db.refresh(db_points)
-    return db_points
