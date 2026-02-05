@@ -51,6 +51,8 @@ class TournamentBase(BaseModel):
     name: str
     bracket_type: str = "Bracket 8 teams"
 
+    weight: float = 1.0  # Waga Turnieju (Globalna)
+
     # Standardowe wagi
     weight_overall: float = 0.4
     weight_quarters: float = 0.2

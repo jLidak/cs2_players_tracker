@@ -9,10 +9,14 @@
     <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
         <h3>Stwórz nowy turniej</h3>
         <form id="createTournamentForm" onsubmit="createTournament(event)">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                <div style="grid-column: span 1;">
                     <label>Nazwa turnieju:</label>
                     <input type="text" name="name" required style="width: 100%; padding: 8px;">
+                </div>
+                <div>
+                    <label>Waga Turnieju (Mnożnik):</label>
+                    <input type="number" step="0.01" name="weight" value="1.0" required style="width: 100%; padding: 8px; font-weight: bold;">
                 </div>
                 <div>
                     <label>Typ Drabinki:</label>
@@ -24,7 +28,7 @@
                 </div>
             </div>
 
-            <h4 style="margin-top: 15px;">Wagi Standardowe (Suma = 1.0)</h4>
+            <h4 style="margin-top: 15px;">Wagi Faz (Suma = 1.0)</h4>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;">
                 <div><label>Overall:</label><input type="number" step="0.01" name="weight_overall" value="0.40" style="width: 100%;"></div>
                 <div><label>QF:</label><input type="number" step="0.01" name="weight_quarters" value="0.20" style="width: 100%;"></div>
@@ -34,7 +38,7 @@
 
             <div id="specialWeightsSection" style="display: none; margin-top: 15px; background: #e8f6f3; padding: 10px; border-radius: 5px;">
                 <h4 style="color: #16a085;">Wagi Specjalne (dla drużyn startujących w Półfinale)</h4>
-                <p style="font-size: 0.8rem; margin-bottom: 5px;">Te wagi dotyczą tylko dwóch drużyn omijających ćwierćfinał. (Zostaw puste, by dzielić resztę po równo).</p>
+                <p style="font-size: 0.8rem; margin-bottom: 5px;">Te wagi dotyczą tylko dwóch drużyn omijających ćwierćfinał.</p>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div><label>SF (Override):</label><input type="number" step="0.01" name="weight_semis_override" placeholder="np. 0.30" style="width: 100%;"></div>
                     <div><label>Finał (Override):</label><input type="number" step="0.01" name="weight_final_override" placeholder="np. 0.30" style="width: 100%;"></div>
@@ -50,9 +54,9 @@
             <tr>
                 <th>ID</th>
                 <th>Nazwa</th>
+                <th>Waga</th>
                 <th>Typ</th>
-                <th>Wagi (Std)</th>
-                <th>Wagi (Override)</th>
+                <th>Wagi Faz (Std)</th>
                 <th>Akcja</th>
             </tr>
         </thead>
@@ -61,16 +65,10 @@
             <tr>
                 <td>{{ t.id }}</td>
                 <td>{{ t.name }}</td>
+                <td><strong>{{ t.weight }}</strong></td>
                 <td><span class="badge" style="background: #3498db;">{{ t.bracket_type }}</span></td>
                 <td style="font-size: 0.85rem;">
                     O:{{t.weight_overall}} | Q:{{t.weight_quarters}} | S:{{t.weight_semis}} | F:{{t.weight_final}}
-                </td>
-                <td style="font-size: 0.85rem; color: #16a085;">
-                    {% if t.weight_semis_override %}
-                    S:{{t.weight_semis_override}} | F:{{t.weight_final_override}}
-                    {% else %}
-                    -
-                    {% endif %}
                 </td>
                 <td>
                     <a href="/tournament/{{ t.id }}" class="btn" style="padding: 5px 10px;">Zarządzaj</a>
@@ -87,11 +85,7 @@
     function toggleSpecialWeights() {
         const type = document.getElementById("bracketTypeSelector").value;
         const section = document.getElementById("specialWeightsSection");
-        if (type === "Bracket 6 teams") {
-            section.style.display = "block";
-        } else {
-            section.style.display = "none";
-        }
+        section.style.display = (type === "Bracket 6 teams") ? "block" : "none";
     }
 
     async function createTournament(event) {
@@ -100,6 +94,7 @@
 
         const data = {
             name: formData.get("name"),
+            weight: parseFloat(formData.get("weight") || 1.0),
             bracket_type: formData.get("bracket_type"),
             weight_overall: parseFloat(formData.get("weight_overall") || 0),
             weight_quarters: parseFloat(formData.get("weight_quarters") || 0),

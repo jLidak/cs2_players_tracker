@@ -274,7 +274,7 @@ def import_auto_from_files(db: Session = Depends(get_db)) -> Dict[str, str]:
                     if not db.query(models.Tournament).filter(models.Tournament.name == t_data["name"]).first():
                         # Filtrujemy dane, aby pasowały do modelu (na wypadek starych JSONów)
                         valid_keys = {
-                            "name", "bracket_type",
+                            "name", "bracket_type", "weight",
                             "weight_overall", "weight_quarters", "weight_semis", "weight_final",
                             "weight_semis_override", "weight_final_override"
                         }

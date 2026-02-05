@@ -46,16 +46,18 @@ class Tournament(Base):
     __tablename__ = "tournaments"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
-
     bracket_type: Mapped[str] = mapped_column(String, default="Bracket 8 teams")
 
-    # Standardowe wagi
+    # --- PRZYWRÓCONA WAGA TURNIEJU ---
+    weight: Mapped[float] = mapped_column(Float, default=1.0)
+
+    # Wagi Faz
     weight_overall: Mapped[float] = mapped_column(Float, default=0.4)
     weight_quarters: Mapped[float] = mapped_column(Float, default=0.2)
     weight_semis: Mapped[float] = mapped_column(Float, default=0.2)
     weight_final: Mapped[float] = mapped_column(Float, default=0.2)
 
-    # NOWE: Wagi specjalne dla drużyn startujących od Półfinału (Bracket 6)
+    # Overrides
     weight_semis_override: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     weight_final_override: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
@@ -65,8 +67,6 @@ class Tournament(Base):
     player_performances: Mapped[List["PlayerTournamentPerformance"]] = relationship("PlayerTournamentPerformance",
                                                                                     back_populates="tournament",
                                                                                     cascade="all, delete-orphan")
-
-
 class TournamentTeam(Base):
     __tablename__ = "tournament_teams"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

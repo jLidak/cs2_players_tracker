@@ -1,6 +1,3 @@
-"""
-Moduł obliczania rankingu.
-"""
 from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session, joinedload
@@ -35,42 +32,45 @@ def get_ranking(db: Session = Depends(get_db)):
                 if participation and participation.starts_in_semis:
                     starts_in_semis = True
 
+            # --- OBLICZANIE PUNKTÓW DLA TEGO TURNIEJU ---
+            tournament_points = 0.0
+
             # 1. Overall
             if perf.rating_overall and perf.rating_overall > 1.0:
-                total_points += (perf.rating_overall - 1.0) * 100 * tour.weight_overall
+                tournament_points += (perf.rating_overall - 1.0) * 100 * tour.weight_overall
 
             if starts_in_semis:
-                # --- SPECJALNA ŚCIEŻKA (Bracket 6 - Skip QF) ---
-                # Używamy wag zdefiniowanych ręcznie (override), a jeśli ich nie ma, dzielimy resztę
-
-                # Ustalanie wagi Półfinału
+                # Ścieżka skrócona (Bracket 6)
                 if tour.weight_semis_override is not None:
                     semis_w = tour.weight_semis_override
                 else:
-                    semis_w = (1.0 - tour.weight_overall) / 2 # Fallback
+                    semis_w = (1.0 - tour.weight_overall) / 2
 
-                # Ustalanie wagi Finału
                 if tour.weight_final_override is not None:
                     final_w = tour.weight_final_override
                 else:
-                    final_w = (1.0 - tour.weight_overall) / 2 # Fallback
+                    final_w = (1.0 - tour.weight_overall) / 2
 
                 if perf.rating_semis and perf.rating_semis > 1.0:
-                    total_points += (perf.rating_semis - 1.0) * 100 * semis_w
+                    tournament_points += (perf.rating_semis - 1.0) * 100 * semis_w
 
                 if perf.rating_final and perf.rating_final > 1.0:
-                    total_points += (perf.rating_final - 1.0) * 100 * final_w
+                    tournament_points += (perf.rating_final - 1.0) * 100 * final_w
 
             else:
-                # --- STANDARDOWA ŚCIEŻKA ---
+                # Ścieżka standardowa
                 if perf.rating_quarters and perf.rating_quarters > 1.0:
-                    total_points += (perf.rating_quarters - 1.0) * 100 * tour.weight_quarters
+                    tournament_points += (perf.rating_quarters - 1.0) * 100 * tour.weight_quarters
 
                 if perf.rating_semis and perf.rating_semis > 1.0:
-                    total_points += (perf.rating_semis - 1.0) * 100 * tour.weight_semis
+                    tournament_points += (perf.rating_semis - 1.0) * 100 * tour.weight_semis
 
                 if perf.rating_final and perf.rating_final > 1.0:
-                    total_points += (perf.rating_final - 1.0) * 100 * tour.weight_final
+                    tournament_points += (perf.rating_final - 1.0) * 100 * tour.weight_final
+
+            # --- KLUCZOWA POPRAWKA: Mnożnik Wagi Turnieju ---
+            # Suma punktów gracza += punkty z faz * waga turnieju
+            total_points += tournament_points * tour.weight
 
         ranking.append({
             "player_id": player.id,
