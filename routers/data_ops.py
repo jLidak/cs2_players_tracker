@@ -130,33 +130,21 @@ def batch_create_players(players: List[schemas.PlayerCreate], db: Session = Depe
 
 @router.delete("/api/database/clear")
 def clear_database(db: Session = Depends(get_db)) -> Dict[str, str]:
-    """
-    Całkowite czyszczenie bazy danych.
-    Usuwa rekordy w odpowiedniej kolejności, aby nie naruszyć więzów integralności.
-
-    Args:
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        Dict[str, str]: Potwierdzenie wyczyszczenia bazy.
-    """
-    # Usuwanie tabel zależnych (dzieci)
-    db.query(models.PlayerRankingPoint).delete()
+    """Usuwa wszystkie dane z bazy w odpowiedniej kolejności."""
+    # Usuwanie dzieci (tabel zależnych)
+    db.query(models.PlayerTournamentPerformance).delete()
+    db.query(models.TournamentTeam).delete()
     db.query(models.PlayerRating).delete()
     db.query(models.Map).delete()
-
-    # Usuwanie tabel pośrednich
     db.query(models.Match).delete()
-    db.query(models.Player).delete()
 
-    # Usuwanie tabel głównych (rodziców)
+    # Usuwanie rodziców
+    db.query(models.Player).delete()
     db.query(models.Team).delete()
     db.query(models.Tournament).delete()
 
     db.commit()
     return {"message": "Baza danych została wyczyszczona."}
-
-
 @router.get("/api/export/")
 def export_database(db: Session = Depends(get_db)) -> JSONResponse:
     """
@@ -244,24 +232,8 @@ async def import_database(file: UploadFile = File(...), db: Session = Depends(ge
 @router.post("/api/import/auto-from-files")
 def import_auto_from_files(db: Session = Depends(get_db)) -> Dict[str, str]:
     """
-    Automatycznie importuje dane z plików JSON znajdujących się w folderze 'json_import_files'.
-    Służy do szybkiego zasypania bazy danymi testowymi/startowymi.
-
-    Wymagana struktura plików w folderze:
-    - teams.json
-    - players.json
-    - tournaments.json
-    - matches.json
-
-    Args:
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        Dict[str, str]: Komunikat o sukcesie.
-
-    Raises:
-        HTTPException(404): Jeśli folder lub któryś z plików nie istnieje.
-        HTTPException(400): Jeśli pliki zawierają błędy składni JSON.
+    Automatycznie importuje dane z plików JSON w folderze json_import_files.
+    Obsługuje: Teams -> Players -> Tournaments -> Matches -> Performances.
     """
     base_folder = "json_import_files"
 
@@ -270,50 +242,89 @@ def import_auto_from_files(db: Session = Depends(get_db)) -> Dict[str, str]:
 
     try:
         # 1. Teams
-        with open(os.path.join(base_folder, "teams.json"), "r", encoding="utf-8") as f:
-            teams_data = json.load(f)
-            for t_data in teams_data:
-                if not db.query(models.Team).filter(models.Team.name == t_data["name"]).first():
-                    db.add(models.Team(**t_data))
-            db.commit()
+        path = os.path.join(base_folder, "teams.json")
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                teams_data = json.load(f)
+                for t_data in teams_data:
+                    if not db.query(models.Team).filter(models.Team.name == t_data["name"]).first():
+                        db.add(models.Team(**t_data))
+                db.commit()
 
         # 2. Players
-        with open(os.path.join(base_folder, "players.json"), "r", encoding="utf-8") as f:
-            players_data = json.load(f)
-            for p_data in players_data:
-                if not db.query(models.Player).filter(models.Player.nickname == p_data["nickname"]).first():
-                    # Walidacja relacji team_id
-                    if p_data.get("team_id") and not db.query(models.Team).filter(
-                            models.Team.id == p_data["team_id"]).first():
-                        p_data["team_id"] = None
-                    db.add(models.Player(**p_data))
-            db.commit()
+        path = os.path.join(base_folder, "players.json")
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                players_data = json.load(f)
+                for p_data in players_data:
+                    if not db.query(models.Player).filter(models.Player.nickname == p_data["nickname"]).first():
+                        # Walidacja team_id
+                        if p_data.get("team_id") and not db.query(models.Team).filter(
+                                models.Team.id == p_data["team_id"]).first():
+                            p_data["team_id"] = None
+                        db.add(models.Player(**p_data))
+                db.commit()
 
-        # 3. Tournaments
-        with open(os.path.join(base_folder, "tournaments.json"), "r", encoding="utf-8") as f:
-            tournaments_data = json.load(f)
-            for t_data in tournaments_data:
-                if not db.query(models.Tournament).filter(models.Tournament.name == t_data["name"]).first():
-                    db.add(models.Tournament(**t_data))
-            db.commit()
+        # 3. Tournaments (Zaktualizowane pola)
+        path = os.path.join(base_folder, "tournaments.json")
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                tournaments_data = json.load(f)
+                for t_data in tournaments_data:
+                    if not db.query(models.Tournament).filter(models.Tournament.name == t_data["name"]).first():
+                        # Filtrujemy dane, aby pasowały do modelu (na wypadek starych JSONów)
+                        valid_keys = {
+                            "name", "bracket_type", "weight",
+                            "weight_overall", "weight_quarters", "weight_semis", "weight_final",
+                            "weight_semis_override", "weight_final_override"
+                        }
+                        filtered_data = {k: v for k, v in t_data.items() if k in valid_keys}
+
+                        db.add(models.Tournament(**filtered_data))
+                db.commit()
 
         # 4. Matches
-        with open(os.path.join(base_folder, "matches.json"), "r", encoding="utf-8") as f:
-            matches_data = json.load(f)
-            for m_data in matches_data:
-                m_date = date_type.fromisoformat(m_data["date"])
-                exists = db.query(models.Match).filter(
-                    models.Match.date == m_date,
-                    models.Match.team1_id == m_data["team1_id"],
-                    models.Match.team2_id == m_data["team2_id"]
-                ).first()
+        path = os.path.join(base_folder, "matches.json")
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                matches_data = json.load(f)
+                for m_data in matches_data:
+                    m_date = date_type.fromisoformat(m_data["date"])
+                    exists = db.query(models.Match).filter(
+                        models.Match.date == m_date,
+                        models.Match.team1_id == m_data["team1_id"],
+                        models.Match.team2_id == m_data["team2_id"]
+                    ).first()
 
-                if not exists:
-                    m_data["date"] = m_date
-                    db.add(models.Match(**m_data))
-            db.commit()
+                    if not exists:
+                        # Sprawdź czy ID istnieją
+                        if (db.query(models.Tournament).get(m_data["tournament_id"]) and
+                                db.query(models.Team).get(m_data["team1_id"]) and
+                                db.query(models.Team).get(m_data["team2_id"])):
+                            m_data["date"] = m_date
+                            db.add(models.Match(**m_data))
+                db.commit()
 
-        return {"message": "Wszystkie pliki zostały zaimportowane pomyślnie!"}
+        # 5. Performances (NOWOŚĆ - Ratingi graczy)
+        path = os.path.join(base_folder, "performances.json")
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                perfs_data = json.load(f)
+                for p_data in perfs_data:
+                    # Sprawdź czy taki wpis już jest
+                    exists = db.query(models.PlayerTournamentPerformance).filter(
+                        models.PlayerTournamentPerformance.player_id == p_data["player_id"],
+                        models.PlayerTournamentPerformance.tournament_id == p_data["tournament_id"]
+                    ).first()
+
+                    if not exists:
+                        # Sprawdź czy gracz i turniej istnieją
+                        if (db.query(models.Player).get(p_data["player_id"]) and
+                                db.query(models.Tournament).get(p_data["tournament_id"])):
+                            db.add(models.PlayerTournamentPerformance(**p_data))
+                db.commit()
+
+        return {"message": "Wszystkie pliki (w tym ratingi) zostały zaimportowane pomyślnie!"}
 
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=f"Brak pliku: {e.filename}")

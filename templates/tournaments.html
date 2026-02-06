@@ -1,48 +1,78 @@
 {% extends "base.html" %}
 
-{% block title %}Turnieje - CS2 Player Tracker{% endblock %}
+{% block title %}Turnieje{% endblock %}
 
 {% block content %}
 <div class="card">
-    <h1>Zarządzanie Turniejami</h1>
-</div>
+    <h1>Turnieje</h1>
 
-<div class="card">
-    <h2>Dodaj Nowy Turniej</h2>
-    <form onsubmit="createTournament(event)">
-        <div class="form-group">
-            <label for="tournamentName">Nazwa turnieju:</label>
-            <input type="text" id="tournamentName" required>
-        </div>
-        <div class="form-group">
-            <label for="tournamentWeight">Waga turnieju (mnożnik punktów):</label>
-            <input type="number" id="tournamentWeight" step="0.1" value="1.0" required>
-            <small style="color: #666;">Przykład: Major = 1,0, IEM Cologne 0,8, ESL Pro League = 0,65, PGL = 0,5</small>
-        </div>
-        <button type="submit" class="btn">Dodaj Turniej</button>
-    </form>
-</div>
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <h3>Stwórz nowy turniej</h3>
+        <form id="createTournamentForm" onsubmit="createTournament(event)">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                <div style="grid-column: span 1;">
+                    <label>Nazwa turnieju:</label>
+                    <input type="text" name="name" required style="width: 100%; padding: 8px;">
+                </div>
+                <div>
+                    <label>Waga Turnieju (Mnożnik):</label>
+                    <input type="number" step="0.01" name="weight" value="1.0" required style="width: 100%; padding: 8px; font-weight: bold;">
+                </div>
+                <div>
+                    <label>Typ Drabinki:</label>
+                    <select name="bracket_type" id="bracketTypeSelector" onchange="toggleSpecialWeights()" style="width: 100%; padding: 8px;">
+                        <option value="Bracket 8 teams">Bracket 8 teams (Standard)</option>
+                        <option value="Bracket 6 teams">Bracket 6 teams (2 zespoły w semis)</option>
+                        <option value="Bracket 16 teams">Bracket 16 teams</option>
+                    </select>
+                </div>
+            </div>
 
-<div class="card">
-    <h2>Lista Turniejów</h2>
-    <table>
+            <h4 style="margin-top: 15px;">Wagi Faz (Suma = 1.0)</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;">
+                <div><label>Overall:</label><input type="number" step="0.01" name="weight_overall" value="0.40" style="width: 100%;"></div>
+                <div><label>QF:</label><input type="number" step="0.01" name="weight_quarters" value="0.20" style="width: 100%;"></div>
+                <div><label>SF:</label><input type="number" step="0.01" name="weight_semis" value="0.20" style="width: 100%;"></div>
+                <div><label>Finał:</label><input type="number" step="0.01" name="weight_final" value="0.20" style="width: 100%;"></div>
+            </div>
+
+            <div id="specialWeightsSection" style="display: none; margin-top: 15px; background: #e8f6f3; padding: 10px; border-radius: 5px;">
+                <h4 style="color: #16a085;">Wagi Specjalne (dla drużyn startujących w Półfinale)</h4>
+                <p style="font-size: 0.8rem; margin-bottom: 5px;">Te wagi dotyczą tylko dwóch drużyn omijających ćwierćfinał.</p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div><label>SF (Override):</label><input type="number" step="0.01" name="weight_semis_override" placeholder="np. 0.30" style="width: 100%;"></div>
+                    <div><label>Finał (Override):</label><input type="number" step="0.01" name="weight_final_override" placeholder="np. 0.30" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn" style="margin-top: 15px; width: 100%;">Dodaj Turniej</button>
+        </form>
+    </div>
+
+    <table class="table">
         <thead>
             <tr>
+                <th>ID</th>
                 <th>Nazwa</th>
                 <th>Waga</th>
-                <th style="width: 150px;">Akcje</th>
+                <th>Typ</th>
+                <th>Wagi Faz (Std)</th>
+                <th>Akcja</th>
             </tr>
         </thead>
-        <tbody id="tournamentsTable">
-            {% for tournament in tournaments %}
+        <tbody>
+            {% for t in tournaments %}
             <tr>
-                <td>{{ tournament.name }}</td>
-                <td>{{ "%.2f"|format(tournament.weight) }}x</td>
-                <td>
-                    <a href="/tournament/{{ tournament.id }}" class="btn" style="padding: 0.5rem 1rem; font-size: 0.9rem; background-color: #f39c12; text-decoration: none; margin-right: 5px;">Punktacja</a>
-                    <button onclick="deleteTournament({{ tournament.id }})" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Usuń</button>
+                <td>{{ t.id }}</td>
+                <td>{{ t.name }}</td>
+                <td><strong>{{ t.weight }}</strong></td>
+                <td><span class="badge" style="background: #3498db;">{{ t.bracket_type }}</span></td>
+                <td style="font-size: 0.85rem;">
+                    O:{{t.weight_overall}} | Q:{{t.weight_quarters}} | S:{{t.weight_semis}} | F:{{t.weight_final}}
                 </td>
-
+                <td>
+                    <a href="/tournament/{{ t.id }}" class="btn" style="padding: 5px 10px;">Zarządzaj</a>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -52,49 +82,40 @@
 
 {% block extra_script %}
 <script>
-    function createTournament(event) {
-        event.preventDefault();
-        
-        const name = document.getElementById('tournamentName').value;
-        const weight = parseFloat(document.getElementById('tournamentWeight').value);
-        
-        fetch('/api/tournaments/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ name, weight })
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('Błąd tworzenia turnieju');
-            return response.json();
-        })
-        .then(data => {
-            alert('Turniej utworzony!');
-            window.location.reload();
-        })
-        .catch(err => {
-            alert('Błąd: ' + err.message);
-        });
+    function toggleSpecialWeights() {
+        const type = document.getElementById("bracketTypeSelector").value;
+        const section = document.getElementById("specialWeightsSection");
+        section.style.display = (type === "Bracket 6 teams") ? "block" : "none";
     }
-    
-    function deleteTournament(tournamentId) {
-        if (!confirm('Czy na pewno chcesz usunąć ten turniej?')) return;
-        
-        fetch(`/api/tournaments/${tournamentId}`, {
-            method: 'DELETE'
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('Błąd usuwania');
-            return response.json();
-        })
-        .then(data => {
-            alert('Turniej usunięty!');
-            window.location.reload();
-        })
-        .catch(err => {
-            alert('Błąd: ' + err.message);
-        });
+
+    async function createTournament(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+
+        const data = {
+            name: formData.get("name"),
+            weight: parseFloat(formData.get("weight") || 1.0),
+            bracket_type: formData.get("bracket_type"),
+            weight_overall: parseFloat(formData.get("weight_overall") || 0),
+            weight_quarters: parseFloat(formData.get("weight_quarters") || 0),
+            weight_semis: parseFloat(formData.get("weight_semis") || 0),
+            weight_final: parseFloat(formData.get("weight_final") || 0),
+            weight_semis_override: formData.get("weight_semis_override") ? parseFloat(formData.get("weight_semis_override")) : null,
+            weight_final_override: formData.get("weight_final_override") ? parseFloat(formData.get("weight_final_override")) : null
+        };
+
+        try {
+            const response = await fetch("/api/tournaments/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+            if (response.ok) window.location.reload();
+            else alert("Błąd zapisu");
+        } catch (e) {
+            console.error(e);
+            alert("Błąd połączenia");
+        }
     }
 </script>
 {% endblock %}

@@ -1,95 +1,81 @@
 """
-Moduł obsługujący endpointy API dla Turniejów.
+Obsługa turniejów: Tworzenie, dodawanie drużyn, wpisywanie wyników (ratingów).
 """
-from typing import List, Dict
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 import models
 import schemas
 from database import get_db
 
-router = APIRouter(
-    prefix="/api/tournaments",
-    tags=["Tournaments"]
-)
+router = APIRouter(tags=["Tournaments"])
 
+@router.get("/api/tournaments/", response_model=List[schemas.Tournament])
+def get_tournaments(db: Session = Depends(get_db)):
+    return db.query(models.Tournament).all()
 
-@router.post("/", response_model=schemas.Tournament)
-def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depends(get_db)) -> models.Tournament:
-    """
-    Tworzy nowy turniej.
-
-    Args:
-        tournament (schemas.TournamentCreate): Dane turnieju.
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        models.Tournament: Utworzony turniej.
-    """
+@router.post("/api/tournaments/", response_model=schemas.Tournament)
+def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depends(get_db)):
     db_tournament = models.Tournament(**tournament.model_dump())
     db.add(db_tournament)
     db.commit()
     db.refresh(db_tournament)
     return db_tournament
 
-
-@router.get("/", response_model=List[schemas.Tournament])
-def get_tournaments(db: Session = Depends(get_db)) -> List[models.Tournament]:
-    """
-    Pobiera wszystkie turnieje.
-
-    Args:
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        List[models.Tournament]: Lista turniejów.
-    """
-    return db.query(models.Tournament).all()
-
-
-@router.put("/{tournament_id}", response_model=schemas.Tournament)
-def update_tournament(tournament_id: int, tournament: schemas.TournamentUpdate,
-                      db: Session = Depends(get_db)) -> models.Tournament:
-    """
-    Aktualizuje dane turnieju (np. wagę punktową).
-
-    Args:
-        tournament_id (int): ID turnieju.
-        tournament (schemas.TournamentUpdate): Nowe dane.
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        models.Tournament: Zaktualizowany turniej.
-    """
-    db_tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
-    if not db_tournament:
+@router.post("/api/tournaments/{tournament_id}/add_team")
+def add_team_to_tournament(
+    tournament_id: int,
+    data: schemas.AddTeamToTournament,
+    db: Session = Depends(get_db)
+):
+    """Dodaje drużynę do turnieju (z opcją starts_in_semis)."""
+    tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
+    if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
 
-    update_data = tournament.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_tournament, key, value)
+    # Sprawdź czy już dodana
+    exists = db.query(models.TournamentTeam).filter(
+        models.TournamentTeam.tournament_id == tournament_id,
+        models.TournamentTeam.team_id == data.team_id
+    ).first()
+
+    if exists:
+        # Update flagi starts_in_semis
+        exists.starts_in_semis = data.starts_in_semis
+    else:
+        new_entry = models.TournamentTeam(
+            tournament_id=tournament_id,
+            team_id=data.team_id,
+            starts_in_semis=data.starts_in_semis
+        )
+        db.add(new_entry)
 
     db.commit()
-    db.refresh(db_tournament)
-    return db_tournament
+    return {"message": "Team added/updated in tournament"}
 
+@router.post("/api/performances/", response_model=schemas.PlayerTournamentPerformance)
+def set_player_performance(
+    perf: schemas.PlayerTournamentPerformanceCreate,
+    db: Session = Depends(get_db)
+):
+    """Ustawia lub aktualizuje ratingi gracza w danym turnieju."""
+    existing = db.query(models.PlayerTournamentPerformance).filter(
+        models.PlayerTournamentPerformance.tournament_id == perf.tournament_id,
+        models.PlayerTournamentPerformance.player_id == perf.player_id
+    ).first()
 
-@router.delete("/{tournament_id}")
-def delete_tournament(tournament_id: int, db: Session = Depends(get_db)) -> Dict[str, str]:
-    """
-    Usuwa turniej z bazy.
-
-    Args:
-        tournament_id (int): ID turnieju.
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        Dict[str, str]: Potwierdzenie usunięcia.
-    """
-    db_tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
-    if not db_tournament:
-        raise HTTPException(status_code=404, detail="Tournament not found")
-
-    db.delete(db_tournament)
-    db.commit()
-    return {"message": "Tournament deleted successfully"}
+    if existing:
+        # Update tylko przekazanych pól (jeśli nie None)
+        if perf.rating_overall is not None: existing.rating_overall = perf.rating_overall
+        if perf.rating_quarters is not None: existing.rating_quarters = perf.rating_quarters
+        if perf.rating_semis is not None: existing.rating_semis = perf.rating_semis
+        if perf.rating_final is not None: existing.rating_final = perf.rating_final
+        db.commit()
+        db.refresh(existing)
+        return existing
+    else:
+        new_perf = models.PlayerTournamentPerformance(**perf.model_dump())
+        db.add(new_perf)
+        db.commit()
+        db.refresh(new_perf)
+        return new_perf
