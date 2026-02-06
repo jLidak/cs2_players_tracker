@@ -1,121 +1,145 @@
 {% extends "base.html" %}
 
-{% block title %}{{ player.nickname }} - CS2 Player Tracker{% endblock %}
+{% block title %}{{ player.nickname }} - Profil{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <a href="/" style="color: #667eea; text-decoration: none;">← Powrót</a>
-        <button onclick="deletePlayer({{ player.id }})" class="btn btn-danger">Usuń gracza</button>
-    </div>
+<div class="card" style="max-width: 800px; margin: 0 auto;">
 
-    <div style="display: flex; gap: 2rem; align-items: start;">
-        <div style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+    <div style="display: flex; gap: 30px; align-items: flex-start;">
+        <div style="flex-shrink: 0;">
             {% if player.photo_url %}
-            <img src="{{ player.photo_url }}" alt="{{ player.nickname }}" style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover; border: 4px solid #667eea;">
+            <img src="{{ player.photo_url }}" alt="{{ player.nickname }}"
+                 style="width: 200px; height: 200px; object-fit: cover; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
             {% else %}
-            <div style="width: 200px; height: 200px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; font-size: 5rem;"></div>
+            <div style="width: 200px; height: 200px; background: #eee; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 5rem; color: #ccc;">
+                👤
+            </div>
             {% endif %}
-
-            <button onclick="updatePhoto({{ player.id }}, '{{ player.photo_url or '' }}')" class="btn" style="margin-top: 10px; font-size: 0.8rem; background-color: #3498db;">Zmień zdjęcie</button>
-             <button onclick="updateNickname({{ player.id }}, '{{ player.nickname }}')" class="btn" style="margin-top: 5px; font-size: 0.8rem; background-color: #9b59b6;">Zmień nick</button>
         </div>
 
-        <div style="flex: 1;">
-            <h1>{{ player.nickname }}</h1>
-            {% if player.team %}
-            <p style="font-size: 1.2rem; color: #666; margin-bottom: 1rem;">
-                {% if player.team.logo_url %}
-                <img src="{{ player.team.logo_url }}" alt="{{ player.team.name }}" style="width: 30px; height: 30px; vertical-align: middle; margin-right: 0.5rem;">
+        <div style="flex-grow: 1;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <h1 style="margin-top: 0; font-size: 2.5rem; margin-bottom: 10px;">{{ player.nickname }}</h1>
+
+                <button onclick="openEditModal()" class="btn" style="background-color: #f39c12; font-size: 0.9rem; padding: 8px 15px;">
+                    ✎ Edytuj Profil
+                </button>
+            </div>
+
+            <h3 style="color: #666; margin-top: 0;">
+                {% if player.team %}
+                    Team: <span style="color: #333;">{{ player.team.name }}</span>
+                {% else %}
+                    <span style="color: #999;">Brak drużyny</span>
                 {% endif %}
-                {{ player.team.name }}
-            </p>
-            {% else %}
-            <p style="font-size: 1.2rem; color: #999;">Bez drużyny</p>
-            {% endif %}
+            </h3>
+
+            <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                <strong>Statystyki Turniejowe:</strong>
+                <ul style="margin-top: 10px; padding-left: 20px;">
+                    {% for perf in player.tournament_performances %}
+                    <li style="margin-bottom: 5px;">
+                        <strong>{{ perf.tournament.name }}:</strong>
+                        <span style="color: #27ae60;">
+                            {% if perf.rating_group %}Grp: {{ perf.rating_group }}{% endif %}
+                            {% if perf.rating_quarters %} | QF: {{ perf.rating_quarters }}{% endif %}
+                            {% if perf.rating_semis %} | SF: {{ perf.rating_semis }}{% endif %}
+                            {% if perf.rating_final %} | F: {{ perf.rating_final }}{% endif %}
+                        </span>
+                    </li>
+                    {% else %}
+                    <li style="color: #888;">Brak danych z turniejów.</li>
+                    {% endfor %}
+                </ul>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="card">
-    <h2>Historia Meczów</h2>
+<div id="editPlayerModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+    <div style="background: white; padding: 25px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+        <h2 style="margin-top: 0;">Edytuj profil gracza</h2>
 
-    {% if matches_with_ratings %}
-    <table>
-        <thead>
-            <tr>
-                <th>Data</th>
-                <th>Turniej</th>
-                <th>Faza</th>
-                <th>Mecz</th>
-                <th>Wynik</th>
-                <th>Rating</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in matches_with_ratings %}
-            {% set match = item.match %}
-            <tr>
-                <td>{{ match.date }}</td>
-                <td>{{ match.tournament.name }}</td>
-                <td>{{ match.phase }}</td>
-                <td>
-                    {{ match.team1.name }} vs {{ match.team2.name }}
-                </td>
-                <td>{{ match.result if match.result else 'TBD' }}</td>
-                <td style="font-weight: bold; color: {% if item.rating and item.rating >= 1.2 %}#2ecc71{% elif item.rating and item.rating >= 1.0 %}#f39c12{% else %}#e74c3c{% endif %};">
-                    {{ "%.2f"|format(item.rating) if item.rating else '-' }}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p style="color: #999; text-align: center; padding: 2rem;">Brak meczów dla tego gracza</p>
-    {% endif %}
+        <form onsubmit="submitEditPlayer(event)">
+            <input type="hidden" id="editPlayerId" value="{{ player.id }}">
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Nick:</label>
+                <input type="text" name="nickname" id="editNickname" value="{{ player.nickname }}" required style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Drużyna:</label>
+                <select name="team_id" id="editTeamId" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="">-- Brak drużyny --</option>
+                    {% for team in all_teams %}
+                    <option value="{{ team.id }}" {% if player.team_id == team.id %}selected{% endif %}>{{ team.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Link do zdjęcia:</label>
+                <input type="url" name="photo_url" id="editPhotoUrl" value="{{ player.photo_url or '' }}" placeholder="https://..." style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+
+            <div style="text-align: right;">
+                <button type="button" class="btn" style="background: #95a5a6; margin-right: 5px;" onclick="closeEditModal()">Anuluj</button>
+                <button type="submit" class="btn" style="background: #27ae60;">Zapisz zmiany</button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_script %}
 <script>
-    // --- NOWE FUNKCJE EDYCJI ---
-    function updatePhoto(playerId, oldUrl) {
-        const newUrl = prompt("Wklej nowy link do zdjęcia:", oldUrl);
-        if (newUrl === null) return;
-
-        fetch(`/api/players/${playerId}`, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ photo_url: newUrl })
-        })
-        .then(res => {
-            if(res.ok) window.location.reload();
-            else alert("Błąd aktualizacji zdjęcia");
-        });
+    function openEditModal() {
+        document.getElementById('editPlayerModal').style.display = 'flex';
     }
 
-    function updateNickname(playerId, oldNick) {
-        const newNick = prompt("Wpisz nowy nick:", oldNick);
-        if (newNick === null || newNick === oldNick) return;
-
-        fetch(`/api/players/${playerId}`, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ nickname: newNick })
-        })
-        .then(res => {
-            if(res.ok) window.location.reload();
-            else alert("Błąd aktualizacji nicku (może jest zajęty?)");
-        });
+    function closeEditModal() {
+        document.getElementById('editPlayerModal').style.display = 'none';
     }
 
-    function deletePlayer(playerId) {
-        if (!confirm('Czy na pewno chcesz usunąć tego gracza?')) return;
-        fetch(`/api/players/${playerId}`, { method: 'DELETE' })
-        .then(res => {
-            if(res.ok) window.location.href = '/';
-            else alert("Błąd usuwania");
-        });
+    async function submitEditPlayer(event) {
+        event.preventDefault();
+        const playerId = document.getElementById('editPlayerId').value;
+        const formData = new FormData(event.target);
+
+        const teamIdVal = formData.get("team_id");
+
+        const data = {
+            nickname: formData.get("nickname"),
+            team_id: (teamIdVal && teamIdVal !== "") ? parseInt(teamIdVal) : null,
+            photo_url: formData.get("photo_url") || null
+        };
+
+        try {
+            const response = await fetch(`/api/players/${playerId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const err = await response.json();
+                alert("Błąd: " + (err.detail || "Wystąpił błąd podczas edycji"));
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Błąd połączenia z serwerem.");
+        }
+    }
+
+    // Zamknij modal po kliknięciu poza nim
+    window.onclick = function(event) {
+        const modal = document.getElementById('editPlayerModal');
+        if (event.target === modal) {
+            closeEditModal();
+        }
     }
 </script>
 {% endblock %}

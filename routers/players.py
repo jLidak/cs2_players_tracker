@@ -75,41 +75,28 @@ def get_player(player_id: int, db: Session = Depends(get_db)) -> models.Player:
     return player
 
 
+# --- NOWY ENDPOINT: EDYCJA ---
 @router.put("/api/players/{player_id}", response_model=schemas.Player)
-def update_player(player_id: int, player: schemas.PlayerUpdate, db: Session = Depends(get_db)) -> models.Player:
-    """
-    Aktualizuje dane istniejącego gracza.
-    Pozwala na zmianę nicku, zdjęcia lub drużyny.
-
-    Args:
-        player_id (int): ID gracza do edycji.
-        player (schemas.PlayerUpdate): Model danych z polami do aktualizacji (opcjonalne).
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        models.Player: Zaktualizowany obiekt gracza.
-
-    Raises:
-        HTTPException(404): Jeśli gracz nie istnieje lub nowa drużyna nie istnieje.
-    """
-    db_player = db.query(models.Player).filter(models.Player.id == player_id).first()
-    if not db_player:
+def update_player(player_id: int, player_data: schemas.PlayerUpdate, db: Session = Depends(get_db)):
+    """Edytuje dane zawodnika (nick, drużynę, zdjęcie)."""
+    player = db.query(models.Player).filter(models.Player.id == player_id).first()
+    if not player:
         raise HTTPException(status_code=404, detail="Player not found")
 
-    # Walidacja teamu przy update
-    if player.team_id is not None:
-        team = db.query(models.Team).filter(models.Team.id == player.team_id).first()
+    # Sprawdź poprawność team_id, jeśli jest zmieniany
+    if player_data.team_id is not None:
+        team = db.query(models.Team).filter(models.Team.id == player_data.team_id).first()
         if not team:
             raise HTTPException(status_code=404, detail="Team not found")
 
-    update_data = player.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_player, key, value)
+    # Aktualizacja pól (tylko tych przesłanych, czyli != None)
+    update_dict = player_data.model_dump(exclude_unset=True)
+    for key, value in update_dict.items():
+        setattr(player, key, value)
 
     db.commit()
-    db.refresh(db_player)
-    return db_player
-
+    db.refresh(player)
+    return player
 
 @router.delete("/api/players/{player_id}")
 def delete_player(player_id: int, db: Session = Depends(get_db)) -> Dict[str, str]:
