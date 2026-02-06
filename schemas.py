@@ -1,13 +1,7 @@
-"""
-Schematy Pydantic.
-Zaktualizowane o pełny model eksportu bazy danych.
-"""
-
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import date
 
-# --- TEAMS ---
 class TeamBase(BaseModel):
     name: str
     logo_url: Optional[str] = None
@@ -19,7 +13,6 @@ class Team(TeamBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
 
-# --- PLAYERS ---
 class PlayerBase(BaseModel):
     nickname: str
     photo_url: Optional[str] = None
@@ -41,7 +34,10 @@ class TournamentBase(BaseModel):
     name: str
     bracket_type: str = "Bracket 8 teams"
     weight: float = 1.0
-    weight_overall: float = 0.4
+
+    # --- ZMIANA NAZWY ---
+    weight_group: float = 0.4
+    # --------------------
     weight_quarters: float = 0.2
     weight_semis: float = 0.2
     weight_final: float = 0.2
@@ -53,7 +49,7 @@ class TournamentUpdate(BaseModel):
     name: Optional[str] = None
     bracket_type: Optional[str] = None
     weight: Optional[float] = None
-    weight_overall: Optional[float] = None
+    weight_group: Optional[float] = None # Zmiana
     weight_quarters: Optional[float] = None
     weight_semis: Optional[float] = None
     weight_final: Optional[float] = None
@@ -68,7 +64,6 @@ class AddTeamToTournament(BaseModel):
     team_id: int
     starts_in_semis: bool = False
 
-# --- NOWE: SCHEMAT DLA TABELI ŁĄCZĄCEJ ---
 class TournamentTeam(BaseModel):
     id: int
     tournament_id: int
@@ -78,10 +73,11 @@ class TournamentTeam(BaseModel):
 
 # --- PERFORMANCE ---
 class PlayerTournamentPerformanceBase(BaseModel):
-    rating_overall: Optional[float] = None
+    rating_group: Optional[float] = None # Zmiana
     rating_quarters: Optional[float] = None
     rating_semis: Optional[float] = None
     rating_final: Optional[float] = None
+
 class PlayerTournamentPerformanceCreate(PlayerTournamentPerformanceBase):
     player_id: int
     tournament_id: int
@@ -91,7 +87,6 @@ class PlayerTournamentPerformance(PlayerTournamentPerformanceBase):
     tournament_id: int
     model_config = ConfigDict(from_attributes=True)
 
-# --- RANKING ---
 class RankingEntry(BaseModel):
     player_id: int
     nickname: str
@@ -99,7 +94,7 @@ class RankingEntry(BaseModel):
     total_points: float
     photo_url: Optional[str] = None
 
-# --- MATCHES / MAPS / RATINGS ---
+# --- LEGACY ---
 class MapBase(BaseModel):
     map_name: str
     score: str
@@ -108,7 +103,6 @@ class Map(MapBase):
     id: int
     match_id: int
     model_config = ConfigDict(from_attributes=True)
-
 class MatchBase(BaseModel):
     tournament_id: int
     phase: str
@@ -135,7 +129,6 @@ class MatchWithDetails(Match):
     team2: Team
     maps: List[Map] = []
     model_config = ConfigDict(from_attributes=True)
-
 class PlayerRatingBase(BaseModel):
     match_id: int
     player_id: int
@@ -144,8 +137,16 @@ class PlayerRatingCreate(PlayerRatingBase): pass
 class PlayerRating(PlayerRatingBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
-
-# --- FULL EXPORT SCHEMA ---
+class PlayerRankingPoint(BaseModel):
+    id: int
+    player_id: int
+    tournament_id: int
+    points: float
+    model_config = ConfigDict(from_attributes=True)
+class PlayerRankingPointCreate(BaseModel):
+    player_id: int
+    tournament_id: int
+    points: float
 class DatabaseExport(BaseModel):
     teams: List[Team]
     tournaments: List[Tournament]

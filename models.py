@@ -1,10 +1,4 @@
 from __future__ import annotations
-
-"""
-Modele SQLAlchemy.
-Zaktualizowane: Dodano pola override dla wag w Bracket 6 (start od półfinału).
-"""
-
 from typing import List, Optional
 from datetime import date
 from sqlalchemy import Integer, String, Float, ForeignKey, Date, Boolean
@@ -17,7 +11,6 @@ class Team(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     logo_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-
     players: Mapped[List["Player"]] = relationship("Player", back_populates="team", cascade="all, delete-orphan")
     tournament_participations: Mapped[List["TournamentTeam"]] = relationship("TournamentTeam", back_populates="team",
                                                                              cascade="all, delete-orphan")
@@ -33,7 +26,6 @@ class Player(Base):
     nickname: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     photo_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     team_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("teams.id"), nullable=True)
-
     team: Mapped[Optional["Team"]] = relationship("Team", back_populates="players")
     ratings: Mapped[List["PlayerRating"]] = relationship("PlayerRating", back_populates="player",
                                                          cascade="all, delete-orphan")
@@ -47,17 +39,15 @@ class Tournament(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     bracket_type: Mapped[str] = mapped_column(String, default="Bracket 8 teams")
-
-    # --- PRZYWRÓCONA WAGA TURNIEJU ---
     weight: Mapped[float] = mapped_column(Float, default=1.0)
 
-    # Wagi Faz
-    weight_overall: Mapped[float] = mapped_column(Float, default=0.4)
+    # --- ZMIANA NAZEWNICTWA ---
+    weight_group: Mapped[float] = mapped_column(Float, default=0.4)  # Zamiast weight_overall
+    # --------------------------
+
     weight_quarters: Mapped[float] = mapped_column(Float, default=0.2)
     weight_semis: Mapped[float] = mapped_column(Float, default=0.2)
     weight_final: Mapped[float] = mapped_column(Float, default=0.2)
-
-    # Overrides
     weight_semis_override: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     weight_final_override: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
@@ -67,13 +57,14 @@ class Tournament(Base):
     player_performances: Mapped[List["PlayerTournamentPerformance"]] = relationship("PlayerTournamentPerformance",
                                                                                     back_populates="tournament",
                                                                                     cascade="all, delete-orphan")
+
+
 class TournamentTeam(Base):
     __tablename__ = "tournament_teams"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     tournament_id: Mapped[int] = mapped_column(Integer, ForeignKey("tournaments.id"), nullable=False)
     team_id: Mapped[int] = mapped_column(Integer, ForeignKey("teams.id"), nullable=False)
     starts_in_semis: Mapped[bool] = mapped_column(Boolean, default=False)
-
     tournament: Mapped["Tournament"] = relationship("Tournament", back_populates="participating_teams")
     team: Mapped["Team"] = relationship("Team", back_populates="tournament_participations")
 
@@ -84,16 +75,18 @@ class PlayerTournamentPerformance(Base):
     player_id: Mapped[int] = mapped_column(Integer, ForeignKey("players.id"), nullable=False)
     tournament_id: Mapped[int] = mapped_column(Integer, ForeignKey("tournaments.id"), nullable=False)
 
-    rating_overall: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    # --- ZMIANA NAZEWNICTWA ---
+    rating_group: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # Zamiast rating_overall
+    # --------------------------
+
     rating_quarters: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     rating_semis: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     rating_final: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-
     player: Mapped["Player"] = relationship("Player", back_populates="tournament_performances")
     tournament: Mapped["Tournament"] = relationship("Tournament", back_populates="player_performances")
 
 
-# --- Legacy ---
+# --- Legacy Models (Bez zmian) ---
 class Match(Base):
     __tablename__ = "matches"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

@@ -10,8 +10,9 @@
     </div>
 
     <div style="margin-top: 10px; font-size: 0.9rem; color: #555;">
-        <strong>Wagi:</strong>
-        Overall: {{ tournament.weight_overall }} |
+        <strong>Waga Turnieju:</strong> {{ tournament.weight }} <br>
+        <strong>Wagi Faz:</strong>
+        Group: {{ tournament.weight_group }} |
         QF: {{ tournament.weight_quarters }} |
         SF: {{ tournament.weight_semis }}
         {% if tournament.weight_semis_override %}<span style="color:#16a085;">({{ tournament.weight_semis_override }})</span>{% endif %} |
@@ -24,7 +25,6 @@
 
     <div class="card">
         <h3>Uczestnicy</h3>
-
         <div style="background: #f1f1f1; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
             <form onsubmit="addTeam(event)">
                 <label>Dodaj drużynę:</label>
@@ -33,18 +33,15 @@
                     <option value="{{ team.id }}">{{ team.name }}</option>
                     {% endfor %}
                 </select>
-
                 {% if tournament.bracket_type == "Bracket 6 teams" %}
                 <div style="margin-bottom: 10px;">
                     <input type="checkbox" name="starts_in_semis" id="semisCheck">
                     <label for="semisCheck">Zaczyna od półfinału (Skip QF)</label>
                 </div>
                 {% endif %}
-
                 <button type="submit" class="btn" style="width: 100%; font-size: 0.8rem;">Dodaj</button>
             </form>
         </div>
-
         <ul style="list-style: none; padding: 0;">
             {% for p in participations %}
             <li style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
@@ -56,23 +53,20 @@
                 </span>
             </li>
             {% else %}
-            <li style="color: #888;">Brak drużyn. Dodaj uczestników.</li>
+            <li style="color: #888;">Brak drużyn.</li>
             {% endfor %}
         </ul>
     </div>
 
     <div class="card">
         <h3>Wyniki Graczy (Ratingi)</h3>
-        <p style="font-size: 0.8rem; color: #666;">Wpisz ratingi (np. 1.25). System automatycznie przeliczy punkty.</p>
-
         <div style="overflow-x: auto;">
             <table class="table">
                 <thead>
                     <tr>
                         <th>Gracz</th>
                         <th>Drużyna</th>
-                        <th>Overall</th>
-                        <th>Quarter</th>
+                        <th>Group</th> <th>Quarter</th>
                         <th>Semi</th>
                         <th>Final</th>
                         <th></th>
@@ -82,12 +76,10 @@
                     {% for player in players %}
                     {% set perf = perfs_dict.get(player.id) %}
                     <tr id="row-{{ player.id }}">
-                        <td>
-                            <div style="font-weight: bold;">{{ player.nickname }}</div>
-                        </td>
+                        <td><div style="font-weight: bold;">{{ player.nickname }}</div></td>
                         <td style="font-size: 0.8rem;">{{ player.team.name }}</td>
 
-                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_overall" value="{{ perf.rating_overall if perf and perf.rating_overall else '' }}" style="width: 80px; padding: 5px;"></td>
+                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_group" value="{{ perf.rating_group if perf and perf.rating_group else '' }}" style="width: 80px; padding: 5px;"></td>
 
                         <td style="text-align: center;">
                             {% if player.team_id in semis_team_ids %}
@@ -97,10 +89,8 @@
                                 <input type="number" step="0.01" class="rating-input" data-field="rating_quarters" value="{{ perf.rating_quarters if perf and perf.rating_quarters else '' }}" style="width: 80px; padding: 5px;">
                             {% endif %}
                         </td>
-
                         <td><input type="number" step="0.01" class="rating-input" data-field="rating_semis" value="{{ perf.rating_semis if perf and perf.rating_semis else '' }}" style="width: 80px; padding: 5px;"></td>
                         <td><input type="number" step="0.01" class="rating-input" data-field="rating_final" value="{{ perf.rating_final if perf and perf.rating_final else '' }}" style="width: 80px; padding: 5px;"></td>
-
                         <td>
                             <button onclick="saveRating({{ player.id }})" class="btn" style="background: #27ae60; padding: 5px 10px; font-size: 0.8rem;">Zapisz</button>
                         </td>
@@ -121,27 +111,16 @@
         event.preventDefault();
         const form = event.target;
         const teamId = form.team_id.value;
-
-        let startsInSemis = false;
-        if (form.starts_in_semis) {
-            startsInSemis = form.starts_in_semis.checked;
-        }
+        let startsInSemis = form.starts_in_semis ? form.starts_in_semis.checked : false;
 
         try {
             const response = await fetch(`/api/tournaments/${TOURNAMENT_ID}/add_team`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    team_id: parseInt(teamId),
-                    starts_in_semis: startsInSemis
-                })
+                body: JSON.stringify({ team_id: parseInt(teamId), starts_in_semis: startsInSemis })
             });
-
-            if (response.ok) {
-                window.location.reload();
-            } else {
-                alert("Błąd dodawania drużyny");
-            }
+            if (response.ok) window.location.reload();
+            else alert("Błąd dodawania drużyny");
         } catch (e) {
             console.error(e);
             alert("Błąd połączenia");
@@ -152,19 +131,15 @@
         const row = document.getElementById(`row-${playerId}`);
         const inputs = row.querySelectorAll('.rating-input');
 
+        // Zmiana: inputs[0] to teraz rating_group
         const data = {
             player_id: playerId,
             tournament_id: TOURNAMENT_ID,
-            rating_overall: inputs[0].value ? parseFloat(inputs[0].value) : null,
+            rating_group: inputs[0].value ? parseFloat(inputs[0].value) : null,
             rating_quarters: inputs[1].value ? parseFloat(inputs[1].value) : null,
             rating_semis: inputs[2].value ? parseFloat(inputs[2].value) : null,
             rating_final: inputs[3].value ? parseFloat(inputs[3].value) : null
         };
-
-        const btn = row.querySelector('button');
-        const originalText = btn.innerText;
-        btn.innerText = "⏳";
-        btn.disabled = true;
 
         try {
             const response = await fetch("/api/performances/", {
@@ -172,24 +147,15 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data)
             });
-
             if (response.ok) {
+                const btn = row.querySelector('button');
+                const oldText = btn.innerText;
                 btn.innerText = "✔";
-                btn.style.backgroundColor = "#2ecc71";
-                setTimeout(() => {
-                    btn.innerText = originalText;
-                    btn.style.backgroundColor = "#27ae60";
-                    btn.disabled = false;
-                }, 1500);
-            } else {
-                btn.innerText = "❌";
-                alert("Błąd zapisu!");
-                btn.disabled = false;
-            }
+                setTimeout(() => btn.innerText = oldText, 1000);
+            } else alert("Błąd zapisu!");
         } catch (e) {
             console.error(e);
             alert("Błąd sieci");
-            btn.disabled = false;
         }
     }
 </script>

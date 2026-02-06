@@ -14,23 +14,54 @@ router = APIRouter(tags=["Tournaments"])
 def get_tournaments(db: Session = Depends(get_db)):
     return db.query(models.Tournament).all()
 
+
 @router.post("/api/tournaments/", response_model=schemas.Tournament)
 def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depends(get_db)):
+    # WALIDACJA WAG: Muszą sumować się do 1.0
+    total_phase_weight = (
+            tournament.weight_group +
+            tournament.weight_quarters +
+            tournament.weight_semis +
+            tournament.weight_final
+    )
+
+    if abs(total_phase_weight - 1.0) > 0.001:  # Tolerancja dla float
+        raise HTTPException(
+            status_code=400,
+            detail=f"Suma wag faz musi wynosić 1.0. Obecnie wynosi: {total_phase_weight}"
+        )
+
     db_tournament = models.Tournament(**tournament.model_dump())
     db.add(db_tournament)
     db.commit()
     db.refresh(db_tournament)
     return db_tournament
 
-# --- TU JEST ENDPOINT DO EDYCJI (PUT) ---
+
 @router.put("/api/tournaments/{tournament_id}", response_model=schemas.Tournament)
 def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Session = Depends(get_db)):
-    """Aktualizuje dane turnieju (nazwa, wagi, typ)."""
+    """Aktualizuje dane turnieju z walidacją sumy wag."""
     tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
 
-    # Aktualizuj tylko przesłane pola
+    # Sprawdzamy sumę wag, jeśli jakakolwiek waga jest aktualizowana
+    weights_to_check = ['weight_group', 'weight_quarters', 'weight_semis', 'weight_final']
+    if any(getattr(data, w) is not None for w in weights_to_check):
+        # Budujemy słownik "nowych" wag (bierzemy z data, a jak None to z bazy)
+        proposed_weights = {}
+        for w in weights_to_check:
+            new_val = getattr(data, w)
+            proposed_weights[w] = new_val if new_val is not None else getattr(tournament, w)
+
+        total = sum(proposed_weights.values())
+        if abs(total - 1.0) > 0.001:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Błąd walidacji: Suma wag faz musi wynosić 1.0. Twoje zmiany dają sumę: {total:.2f}"
+            )
+
+    # Aktualizuj pola
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(tournament, key, value)
@@ -38,15 +69,11 @@ def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Se
     db.commit()
     db.refresh(tournament)
     return tournament
-# ----------------------------------------
-
 @router.delete("/api/tournaments/{tournament_id}")
 def delete_tournament(tournament_id: int, db: Session = Depends(get_db)):
-    """Usuwa turniej oraz kaskadowo wszystkie powiązane mecze i wyniki."""
     tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
-
     db.delete(tournament)
     db.commit()
     return {"message": "Turniej usunięty"}
@@ -57,7 +84,6 @@ def add_team_to_tournament(
     data: schemas.AddTeamToTournament,
     db: Session = Depends(get_db)
 ):
-    """Dodaje drużynę do turnieju."""
     tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
@@ -76,7 +102,6 @@ def add_team_to_tournament(
             starts_in_semis=data.starts_in_semis
         )
         db.add(new_entry)
-
     db.commit()
     return {"message": "Team added/updated in tournament"}
 
@@ -85,14 +110,14 @@ def set_player_performance(
     perf: schemas.PlayerTournamentPerformanceCreate,
     db: Session = Depends(get_db)
 ):
-    """Ustawia ratingi gracza."""
+    """Ustawia ratingi gracza. Zmieniono rating_overall na rating_group."""
     existing = db.query(models.PlayerTournamentPerformance).filter(
         models.PlayerTournamentPerformance.tournament_id == perf.tournament_id,
         models.PlayerTournamentPerformance.player_id == perf.player_id
     ).first()
 
     if existing:
-        if perf.rating_overall is not None: existing.rating_overall = perf.rating_overall
+        if perf.rating_group is not None: existing.rating_group = perf.rating_group
         if perf.rating_quarters is not None: existing.rating_quarters = perf.rating_quarters
         if perf.rating_semis is not None: existing.rating_semis = perf.rating_semis
         if perf.rating_final is not None: existing.rating_final = perf.rating_final
