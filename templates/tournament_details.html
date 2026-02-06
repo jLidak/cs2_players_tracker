@@ -87,19 +87,19 @@
                         </td>
                         <td style="font-size: 0.8rem;">{{ player.team.name }}</td>
 
-                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_overall" value="{{ perf.rating_overall if perf and perf.rating_overall else '' }}" style="width: 60px;"></td>
+                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_overall" value="{{ perf.rating_overall if perf and perf.rating_overall else '' }}" style="width: 80px; padding: 5px;"></td>
 
                         <td style="text-align: center;">
                             {% if player.team_id in semis_team_ids %}
                                 <span style="font-size: 0.8rem; color: #ccc; font-style: italic;">Skip</span>
                                 <input type="hidden" class="rating-input" data-field="rating_quarters" value="">
                             {% else %}
-                                <input type="number" step="0.01" class="rating-input" data-field="rating_quarters" value="{{ perf.rating_quarters if perf and perf.rating_quarters else '' }}" style="width: 60px;">
+                                <input type="number" step="0.01" class="rating-input" data-field="rating_quarters" value="{{ perf.rating_quarters if perf and perf.rating_quarters else '' }}" style="width: 80px; padding: 5px;">
                             {% endif %}
                         </td>
 
-                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_semis" value="{{ perf.rating_semis if perf and perf.rating_semis else '' }}" style="width: 60px;"></td>
-                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_final" value="{{ perf.rating_final if perf and perf.rating_final else '' }}" style="width: 60px;"></td>
+                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_semis" value="{{ perf.rating_semis if perf and perf.rating_semis else '' }}" style="width: 80px; padding: 5px;"></td>
+                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_final" value="{{ perf.rating_final if perf and perf.rating_final else '' }}" style="width: 80px; padding: 5px;"></td>
 
                         <td>
                             <button onclick="saveRating({{ player.id }})" class="btn" style="background: #27ae60; padding: 5px 10px; font-size: 0.8rem;">Zapisz</button>
@@ -150,10 +150,8 @@
 
     async function saveRating(playerId) {
         const row = document.getElementById(`row-${playerId}`);
-        // Pobieramy wszystkie inputy z klasą rating-input (również te hidden)
         const inputs = row.querySelectorAll('.rating-input');
 
-        // Dzięki input type="hidden" kolejność jest zawsze zachowana: [0]=Overall, [1]=Quarter, [2]=Semi, [3]=Final
         const data = {
             player_id: playerId,
             tournament_id: TOURNAMENT_ID,
