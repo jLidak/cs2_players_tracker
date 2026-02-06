@@ -1,9 +1,9 @@
 """
-Obsługa turniejów: Tworzenie, dodawanie drużyn, wpisywanie wyników (ratingów).
+Obsługa turniejów: Tworzenie, edycja, usuwanie, dodawanie drużyn, wpisywanie wyników.
 """
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 import models
 import schemas
 from database import get_db
@@ -22,25 +22,52 @@ def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depend
     db.refresh(db_tournament)
     return db_tournament
 
+# --- TU JEST ENDPOINT DO EDYCJI (PUT) ---
+@router.put("/api/tournaments/{tournament_id}", response_model=schemas.Tournament)
+def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Session = Depends(get_db)):
+    """Aktualizuje dane turnieju (nazwa, wagi, typ)."""
+    tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    # Aktualizuj tylko przesłane pola
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(tournament, key, value)
+
+    db.commit()
+    db.refresh(tournament)
+    return tournament
+# ----------------------------------------
+
+@router.delete("/api/tournaments/{tournament_id}")
+def delete_tournament(tournament_id: int, db: Session = Depends(get_db)):
+    """Usuwa turniej oraz kaskadowo wszystkie powiązane mecze i wyniki."""
+    tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    db.delete(tournament)
+    db.commit()
+    return {"message": "Turniej usunięty"}
+
 @router.post("/api/tournaments/{tournament_id}/add_team")
 def add_team_to_tournament(
     tournament_id: int,
     data: schemas.AddTeamToTournament,
     db: Session = Depends(get_db)
 ):
-    """Dodaje drużynę do turnieju (z opcją starts_in_semis)."""
+    """Dodaje drużynę do turnieju."""
     tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
 
-    # Sprawdź czy już dodana
     exists = db.query(models.TournamentTeam).filter(
         models.TournamentTeam.tournament_id == tournament_id,
         models.TournamentTeam.team_id == data.team_id
     ).first()
 
     if exists:
-        # Update flagi starts_in_semis
         exists.starts_in_semis = data.starts_in_semis
     else:
         new_entry = models.TournamentTeam(
@@ -58,14 +85,13 @@ def set_player_performance(
     perf: schemas.PlayerTournamentPerformanceCreate,
     db: Session = Depends(get_db)
 ):
-    """Ustawia lub aktualizuje ratingi gracza w danym turnieju."""
+    """Ustawia ratingi gracza."""
     existing = db.query(models.PlayerTournamentPerformance).filter(
         models.PlayerTournamentPerformance.tournament_id == perf.tournament_id,
         models.PlayerTournamentPerformance.player_id == perf.player_id
     ).first()
 
     if existing:
-        # Update tylko przekazanych pól (jeśli nie None)
         if perf.rating_overall is not None: existing.rating_overall = perf.rating_overall
         if perf.rating_quarters is not None: existing.rating_quarters = perf.rating_quarters
         if perf.rating_semis is not None: existing.rating_semis = perf.rating_semis

@@ -1,334 +1,195 @@
 """
 Moduł operacji na danych (Data Operations).
-Obsługuje import/export JSON, masowe dodawanie danych (batch) oraz czyszczenie bazy.
-Umożliwia szybkie przywracanie stanu bazy danych lub jej migrację.
+Obsługuje import/export całej bazy danych oraz operacje czyszczenia.
 """
 import os
 import json
 from datetime import date as date_type
 from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 import models
 import schemas
 from database import get_db
 
-router = APIRouter(
-    tags=["Data Operations"]
-)
+router = APIRouter(tags=["Data Operations"])
 
+# --- FUNKCJE POMOCNICZE ---
 
-# --- JSON BATCH OPERATIONS ---
-
-@router.post("/api/batch/teams/")
-def batch_create_teams(teams: List[schemas.TeamCreate], db: Session = Depends(get_db)) -> Dict[str, str]:
-    """
-    Masowe dodawanie drużyn do bazy danych.
-    Pomija drużyny, których nazwy już istnieją w bazie.
-
-    Args:
-        teams (List[schemas.TeamCreate]): Lista obiektów drużyn do dodania.
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        Dict[str, str]: Informacja o liczbie dodanych drużyn.
-    """
-    added_count = 0
-    for team_data in teams:
-        exists = db.query(models.Team).filter(models.Team.name == team_data.name).first()
-        if not exists:
-            db_team = models.Team(**team_data.model_dump())
-            db.add(db_team)
-            added_count += 1
-    db.commit()
-    return {"message": f"Dodano {added_count} nowych drużyn."}
-
-
-@router.post("/api/batch/tournaments/")
-def batch_create_tournaments(tournaments: List[schemas.TournamentCreate], db: Session = Depends(get_db)) -> Dict[str, str]:
-    """
-    Masowe dodawanie turniejów.
-    Pomija turnieje o istniejących nazwach.
-
-    Args:
-        tournaments (List[schemas.TournamentCreate]): Lista turniejów.
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        Dict[str, str]: Informacja o liczbie dodanych turniejów.
-    """
-    added_count = 0
-    for t_data in tournaments:
-        exists = db.query(models.Tournament).filter(models.Tournament.name == t_data.name).first()
-        if not exists:
-            db_t = models.Tournament(**t_data.model_dump())
-            db.add(db_t)
-            added_count += 1
-    db.commit()
-    return {"message": f"Dodano {added_count} nowych turniejów."}
-
-
-@router.post("/api/batch/matches/")
-def batch_create_matches(matches: List[schemas.MatchCreate], db: Session = Depends(get_db)) -> Dict[str, str]:
-    """
-    Masowe dodawanie meczów.
-    Dodaje mecz tylko wtedy, gdy istnieją powiązane ID turnieju oraz obu drużyn.
-
-    Args:
-        matches (List[schemas.MatchCreate]): Lista meczów do dodania.
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        Dict[str, str]: Informacja o liczbie pomyślnie dodanych meczów.
-    """
-    added_count = 0
-    for m_data in matches:
-        t_exists = db.query(models.Tournament).filter(models.Tournament.id == m_data.tournament_id).first()
-        team1_exists = db.query(models.Team).filter(models.Team.id == m_data.team1_id).first()
-        team2_exists = db.query(models.Team).filter(models.Team.id == m_data.team2_id).first()
-
-        if t_exists and team1_exists and team2_exists:
-            db_match = models.Match(**m_data.model_dump())
-            db.add(db_match)
-            added_count += 1
-
-    db.commit()
-    return {"message": f"Dodano {added_count} meczów (pominięto błędne ID)."}
-
-
-@router.post("/api/batch/players/")
-def batch_create_players(players: List[schemas.PlayerCreate], db: Session = Depends(get_db)) -> Dict[str, str]:
-    """
-    Masowe dodawanie graczy.
-    Jeśli podane ID drużyny nie istnieje, gracz jest dodawany jako "wolny agent" (team_id=None).
-
-    Args:
-        players (List[schemas.PlayerCreate]): Lista graczy.
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        Dict[str, str]: Informacja o liczbie dodanych graczy.
-    """
-    added_count = 0
-    for p_data in players:
-        exists = db.query(models.Player).filter(models.Player.nickname == p_data.nickname).first()
-        if not exists:
-            if p_data.team_id:
-                team_exists = db.query(models.Team).filter(models.Team.id == p_data.team_id).first()
-                if not team_exists:
-                    p_data.team_id = None
-
-            db_player = models.Player(**p_data.model_dump())
-            db.add(db_player)
-            added_count += 1
-    db.commit()
-    return {"message": f"Dodano {added_count} graczy."}
-
-
-# --- DATABASE MANAGEMENT ---
-
-@router.delete("/api/database/clear")
-def clear_database(db: Session = Depends(get_db)) -> Dict[str, str]:
-    """Usuwa wszystkie dane z bazy w odpowiedniej kolejności."""
+def clear_all_tables(db: Session):
+    """Usuwa dane ze wszystkich tabel w bezpiecznej kolejności."""
     # Usuwanie dzieci (tabel zależnych)
-    db.query(models.PlayerTournamentPerformance).delete()
-    db.query(models.TournamentTeam).delete()
     db.query(models.PlayerRating).delete()
     db.query(models.Map).delete()
+    db.query(models.PlayerTournamentPerformance).delete()
     db.query(models.Match).delete()
+    db.query(models.TournamentTeam).delete()
 
     # Usuwanie rodziców
     db.query(models.Player).delete()
     db.query(models.Team).delete()
     db.query(models.Tournament).delete()
-
     db.commit()
+
+# --- ENDPOINTY ---
+
+@router.delete("/api/database/clear")
+def clear_database(db: Session = Depends(get_db)):
+    clear_all_tables(db)
     return {"message": "Baza danych została wyczyszczona."}
-@router.get("/api/export/")
-def export_database(db: Session = Depends(get_db)) -> JSONResponse:
-    """
-    Eksportuje całą zawartość bazy danych do jednego strukturalnego obiektu JSON.
-    Przydatne do tworzenia kopii zapasowych.
 
-    Args:
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        JSONResponse: Obiekt JSON zawierający listy wszystkich encji (drużyny, gracze, mecze, itd.).
+@router.get("/api/export", response_class=Response)
+def export_database(db: Session = Depends(get_db)):
     """
+    Eksportuje całą zawartość bazy danych do jednego pliku JSON.
+    """
+    # 1. Pobieramy dane
     teams = db.query(models.Team).all()
-    players = db.query(models.Player).all()
     tournaments = db.query(models.Tournament).all()
+    players = db.query(models.Player).all()
+    tournament_teams = db.query(models.TournamentTeam).all()
+    performances = db.query(models.PlayerTournamentPerformance).all()
     matches = db.query(models.Match).all()
     maps = db.query(models.Map).all()
-    player_ratings = db.query(models.PlayerRating).all()
-    player_ranking_points = db.query(models.PlayerRankingPoint).all()
+    ratings = db.query(models.PlayerRating).all()
 
-    export_data = {
-        "teams": [schemas.Team.model_validate(t).model_dump() for t in teams],
-        "players": [schemas.Player.model_validate(p).model_dump() for p in players],
-        "tournaments": [schemas.Tournament.model_validate(t).model_dump() for t in tournaments],
-        "matches": [schemas.Match.model_validate(m).model_dump(mode='json') for m in matches],
-        "maps": [schemas.Map.model_validate(m).model_dump() for m in maps],
-        "player_ratings": [schemas.PlayerRating.model_validate(pr).model_dump() for pr in player_ratings],
-        "player_ranking_points": [schemas.PlayerRankingPoint.model_validate(prp).model_dump() for prp in
-                                  player_ranking_points]
-    }
+    # 2. Walidujemy przez Pydantic (zamiana na słowniki/JSON)
+    export_data = schemas.DatabaseExport(
+        teams=[schemas.Team.model_validate(x) for x in teams],
+        tournaments=[schemas.Tournament.model_validate(x) for x in tournaments],
+        players=[schemas.Player.model_validate(x) for x in players],
+        tournament_teams=[schemas.TournamentTeam.model_validate(x) for x in tournament_teams],
+        player_performances=[schemas.PlayerTournamentPerformance.model_validate(x) for x in performances],
+        matches=[schemas.Match.model_validate(x) for x in matches],
+        maps=[schemas.Map.model_validate(x) for x in maps],
+        player_ratings=[schemas.PlayerRating.model_validate(x) for x in ratings]
+    )
 
-    return JSONResponse(content=export_data)
+    # 3. Zwracamy jako plik do pobrania
+    json_str = export_data.model_dump_json(indent=2)
 
+    return Response(
+        content=json_str,
+        media_type="application/json",
+        headers={"Content-Disposition": "attachment; filename=full_backup.json"}
+    )
 
-@router.post("/api/import/")
-async def import_database(file: UploadFile = File(...), db: Session = Depends(get_db)) -> Dict[str, str]:
+@router.post("/api/import")
+async def import_database(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """
-    Czyści całą obecną bazę danych, a następnie importuje pełną bazę danych z przesłanego pliku JSON.
-
-    Args:
-        file (UploadFile): Przesłany plik JSON zgodny ze strukturą eksportu.
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        Dict[str, str]: Komunikat o sukcesie importu.
+    Importuje pełny zrzut bazy danych. UWAGA: CZYŚCI OBECNĄ BAZĘ!
     """
-    content = await file.read()
-    data = json.loads(content)
+    try:
+        content = await file.read()
+        data = json.loads(content)
 
-    clear_database(db)
+        # Wyczyść obecne dane
+        clear_all_tables(db)
 
-    for team_data in data.get("teams", []):
-        db.add(models.Team(**team_data))
-    db.commit()
+        # Wstawianie w kolejności (zależności kluczy obcych)
 
-    for player_data in data.get("players", []):
-        db.add(models.Player(**player_data))
-    db.commit()
+        # 1. Teams & Tournaments (niezależne)
+        for item in data.get("teams", []):
+            db.add(models.Team(**item))
+        for item in data.get("tournaments", []):
+            db.add(models.Tournament(**item))
+        db.commit() # Commit, żeby ID były dostępne dla następnych
 
-    for tournament_data in data.get("tournaments", []):
-        db.add(models.Tournament(**tournament_data))
-    db.commit()
+        # 2. Players (zależy od Teams)
+        for item in data.get("players", []):
+            db.add(models.Player(**item))
+        db.commit()
 
-    for match_data in data.get("matches", []):
-        # Konwersja stringa daty z JSON na obiekt python date
-        match_data["date"] = date_type.fromisoformat(match_data["date"])
-        db.add(models.Match(**match_data))
-    db.commit()
+        # 3. TournamentTeams (zależy od Teams, Tournaments)
+        for item in data.get("tournament_teams", []):
+            db.add(models.TournamentTeam(**item))
 
-    for map_data in data.get("maps", []):
-        db.add(models.Map(**map_data))
-    db.commit()
+        # 4. Performances (zależy od Players, Tournaments)
+        for item in data.get("player_performances", []):
+            db.add(models.PlayerTournamentPerformance(**item))
+        db.commit()
 
-    for rating_data in data.get("player_ratings", []):
-        db.add(models.PlayerRating(**rating_data))
-    db.commit()
+        # 5. Matches (zależy od Teams, Tournaments)
+        for item in data.get("matches", []):
+            # Konwersja daty ze stringa na obiekt date
+            if isinstance(item["date"], str):
+                item["date"] = date_type.fromisoformat(item["date"])
+            db.add(models.Match(**item))
+        db.commit()
 
-    for ranking_data in data.get("player_ranking_points", []):
-        db.add(models.PlayerRankingPoint(**ranking_data))
-    db.commit()
+        # 6. Maps & Ratings (zależy od Matches)
+        for item in data.get("maps", []):
+            db.add(models.Map(**item))
+        for item in data.get("player_ratings", []):
+            db.add(models.PlayerRating(**item))
+        db.commit()
 
-    return {"message": "Database imported successfully"}
+        return {"message": "Baza danych została pomyślnie przywrócona z pliku!"}
 
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Nieprawidłowy format pliku JSON")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Błąd importu: {str(e)}")
 
 @router.post("/api/import/auto-from-files")
-def import_auto_from_files(db: Session = Depends(get_db)) -> Dict[str, str]:
+def import_auto_from_files(db: Session = Depends(get_db)):
     """
-    Automatycznie importuje dane z plików JSON w folderze json_import_files.
-    Obsługuje: Teams -> Players -> Tournaments -> Matches -> Performances.
+    Importuje dane startowe z folderu json_import_files (stara metoda, bezpieczna, nie usuwa danych).
     """
     base_folder = "json_import_files"
-
     if not os.path.exists(base_folder):
-        raise HTTPException(status_code=404, detail=f"Nie znaleziono folderu '{base_folder}'")
+        raise HTTPException(status_code=404, detail="Folder json_import_files nie istnieje")
 
     try:
         # 1. Teams
-        path = os.path.join(base_folder, "teams.json")
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                teams_data = json.load(f)
-                for t_data in teams_data:
-                    if not db.query(models.Team).filter(models.Team.name == t_data["name"]).first():
-                        db.add(models.Team(**t_data))
+        if os.path.exists(f"{base_folder}/teams.json"):
+            with open(f"{base_folder}/teams.json", "r", encoding="utf-8") as f:
+                for t in json.load(f):
+                    if not db.query(models.Team).filter_by(name=t["name"]).first():
+                        db.add(models.Team(**t))
                 db.commit()
 
         # 2. Players
-        path = os.path.join(base_folder, "players.json")
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                players_data = json.load(f)
-                for p_data in players_data:
-                    if not db.query(models.Player).filter(models.Player.nickname == p_data["nickname"]).first():
-                        # Walidacja team_id
-                        if p_data.get("team_id") and not db.query(models.Team).filter(
-                                models.Team.id == p_data["team_id"]).first():
-                            p_data["team_id"] = None
-                        db.add(models.Player(**p_data))
+        if os.path.exists(f"{base_folder}/players.json"):
+            with open(f"{base_folder}/players.json", "r", encoding="utf-8") as f:
+                for p in json.load(f):
+                    if not db.query(models.Player).filter_by(nickname=p["nickname"]).first():
+                        if p.get("team_id") and not db.query(models.Team).get(p["team_id"]): p["team_id"] = None
+                        db.add(models.Player(**p))
                 db.commit()
 
-        # 3. Tournaments (Zaktualizowane pola)
-        path = os.path.join(base_folder, "tournaments.json")
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                tournaments_data = json.load(f)
-                for t_data in tournaments_data:
-                    if not db.query(models.Tournament).filter(models.Tournament.name == t_data["name"]).first():
-                        # Filtrujemy dane, aby pasowały do modelu (na wypadek starych JSONów)
-                        valid_keys = {
-                            "name", "bracket_type", "weight",
-                            "weight_overall", "weight_quarters", "weight_semis", "weight_final",
-                            "weight_semis_override", "weight_final_override"
-                        }
-                        filtered_data = {k: v for k, v in t_data.items() if k in valid_keys}
-
-                        db.add(models.Tournament(**filtered_data))
+        # 3. Tournaments
+        if os.path.exists(f"{base_folder}/tournaments.json"):
+            with open(f"{base_folder}/tournaments.json", "r", encoding="utf-8") as f:
+                for t in json.load(f):
+                    if not db.query(models.Tournament).filter_by(name=t["name"]).first():
+                        # Filtrowanie kluczy
+                        valid = {"name", "weight", "bracket_type", "weight_overall", "weight_quarters", "weight_semis", "weight_final", "weight_semis_override", "weight_final_override"}
+                        clean_t = {k: v for k, v in t.items() if k in valid}
+                        db.add(models.Tournament(**clean_t))
                 db.commit()
 
         # 4. Matches
-        path = os.path.join(base_folder, "matches.json")
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                matches_data = json.load(f)
-                for m_data in matches_data:
-                    m_date = date_type.fromisoformat(m_data["date"])
-                    exists = db.query(models.Match).filter(
-                        models.Match.date == m_date,
-                        models.Match.team1_id == m_data["team1_id"],
-                        models.Match.team2_id == m_data["team2_id"]
-                    ).first()
-
-                    if not exists:
-                        # Sprawdź czy ID istnieją
-                        if (db.query(models.Tournament).get(m_data["tournament_id"]) and
-                                db.query(models.Team).get(m_data["team1_id"]) and
-                                db.query(models.Team).get(m_data["team2_id"])):
-                            m_data["date"] = m_date
-                            db.add(models.Match(**m_data))
+        if os.path.exists(f"{base_folder}/matches.json"):
+            with open(f"{base_folder}/matches.json", "r", encoding="utf-8") as f:
+                for m in json.load(f):
+                    m_date = date_type.fromisoformat(m["date"])
+                    if not db.query(models.Match).filter_by(date=m_date, team1_id=m["team1_id"], team2_id=m["team2_id"]).first():
+                         if db.query(models.Tournament).get(m["tournament_id"]):
+                            m["date"] = m_date
+                            db.add(models.Match(**m))
                 db.commit()
 
-        # 5. Performances (NOWOŚĆ - Ratingi graczy)
-        path = os.path.join(base_folder, "performances.json")
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                perfs_data = json.load(f)
-                for p_data in perfs_data:
-                    # Sprawdź czy taki wpis już jest
-                    exists = db.query(models.PlayerTournamentPerformance).filter(
-                        models.PlayerTournamentPerformance.player_id == p_data["player_id"],
-                        models.PlayerTournamentPerformance.tournament_id == p_data["tournament_id"]
-                    ).first()
-
-                    if not exists:
-                        # Sprawdź czy gracz i turniej istnieją
-                        if (db.query(models.Player).get(p_data["player_id"]) and
-                                db.query(models.Tournament).get(p_data["tournament_id"])):
-                            db.add(models.PlayerTournamentPerformance(**p_data))
+        # 5. Performances
+        if os.path.exists(f"{base_folder}/performances.json"):
+             with open(f"{base_folder}/performances.json", "r", encoding="utf-8") as f:
+                for p in json.load(f):
+                    if not db.query(models.PlayerTournamentPerformance).filter_by(player_id=p["player_id"], tournament_id=p["tournament_id"]).first():
+                        db.add(models.PlayerTournamentPerformance(**p))
                 db.commit()
 
-        return {"message": "Wszystkie pliki (w tym ratingi) zostały zaimportowane pomyślnie!"}
-
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=f"Brak pliku: {e.filename}")
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Błąd w składni jednego z plików JSON")
+        return {"message": "Dane startowe załadowane."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

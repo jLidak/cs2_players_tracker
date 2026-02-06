@@ -102,6 +102,19 @@ def matches_page(request: Request, db: Session = Depends(get_db)):
     teams = db.query(models.Team).all()
     return templates.TemplateResponse("matches.html", {"request": request, "matches": matches, "tournaments": tournaments, "teams": teams})
 
+@router.get("/player/{player_id}", response_class=HTMLResponse)
+def player_profile(request: Request, player_id: int, db: Session = Depends(get_db)):
+    """Profil pojedynczego gracza."""
+    player = db.query(models.Player).options(
+        joinedload(models.Player.team),
+        # Ładujemy też historię występów w turniejach
+        joinedload(models.Player.tournament_performances).joinedload(models.PlayerTournamentPerformance.tournament)
+    ).filter(models.Player.id == player_id).first()
+
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    return templates.TemplateResponse("player.html", {"request": request, "player": player})
 @router.get("/import-json", response_class=HTMLResponse)
 def import_json_page(request: Request):
     return templates.TemplateResponse("json_import.html", {"request": request})

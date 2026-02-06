@@ -1,73 +1,41 @@
 {% extends "base.html" %}
 
-{% block title %}Masowy Import JSON{% endblock %}
+{% block title %}Zarządzanie Danymi{% endblock %}
 
 {% block content %}
-<div class="card" style="text-align: center;">
-    <h1>Masowe Dodawanie (JSON)</h1>
+<div style="max-width: 800px; margin: 0 auto;">
 
-    <button onclick="autoImportFromFiles(event)" class="btn" style="background-color: #8e44ad; font-weight: bold; width: 100%; padding: 15px; font-size: 1.1rem; margin-top: 10px;">
-        Załaduj wstępną bazę z plików (Folder json_import_files)
-    </button>
-</div>
-
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-
-    <div class="card">
-        <h2>1. Drużyny</h2>
-        <p style="font-size: 0.8rem; color: #666;">Format: <code>[{"name": "...", "logo_url": "..."}]</code></p>
-        <textarea id="teamsJson" style="width: 100%; height: 150px; font-family: monospace;" placeholder='[
-  {
-    "name": "G2 Esports",
-    "logo_url": "https://..."
-  }
-]'></textarea>
-        <button onclick="sendData('teams')" class="btn" style="width: 100%; margin-top: 10px;">Dodaj Drużyny</button>
+    <div class="card" style="text-align: center; margin-bottom: 30px;">
+        <h1>Import / Export Bazy Danych</h1>
+        <p>Zarządzaj kopiami zapasowymi całej aplikacji.</p>
     </div>
 
-    <div class="card">
-        <h2>2. Zawodnicy</h2>
-        <p style="font-size: 0.8rem; color: #666;">Format: <code>[{"nickname": "...", "team_id": 1}]</code></p>
-        <textarea id="playersJson" style="width: 100%; height: 150px; font-family: monospace;" placeholder='[
-  {
-    "nickname": "NiKo",
-    "team_id": 1,
-    "photo_url": "https://..."
-  }
-]'></textarea>
-        <button onclick="sendData('players')" class="btn" style="width: 100%; margin-top: 10px;">Dodaj Zawodników</button>
+    <div class="card" style="margin-bottom: 20px; border-left: 5px solid #3498db;">
+        <h2>📤 Eksport (Backup)</h2>
+        <p>Pobierz całą zawartość bazy danych (drużyny, gracze, turnieje, mecze, wyniki) do jednego pliku JSON.</p>
+        <a href="/api/export" class="btn" style="background-color: #3498db; text-decoration: none; display: inline-block;">
+            Pobierz pełny backup (.json)
+        </a>
     </div>
 
-    <div class="card">
-        <h2>3. Turnieje</h2>
-        <p style="font-size: 0.8rem; color: #666;">Format: <code>[{"name": "...", "weight": 2.0}]</code></p>
-        <textarea id="tournamentsJson" style="width: 100%; height: 150px; font-family: monospace;" placeholder='[
-  {
-    "name": "PGL Major",
-    "weight": 2.0
-  }
-]'></textarea>
-        <button onclick="sendData('tournaments')" class="btn" style="width: 100%; margin-top: 10px;">Dodaj Turnieje</button>
+    <div class="card" style="margin-bottom: 20px; border-left: 5px solid #e74c3c;">
+        <h2>📥 Import (Przywracanie)</h2>
+        <p style="color: #c0392b; font-weight: bold;">UWAGA: Ta operacja usunie wszystkie obecne dane i zastąpi je danymi z pliku!</p>
+
+        <form onsubmit="importDatabase(event)" style="margin-top: 15px;">
+            <input type="file" id="importFile" accept=".json" required style="padding: 10px; border: 1px solid #ddd; width: 100%; box-sizing: border-box; margin-bottom: 10px;">
+            <button type="submit" class="btn" style="background-color: #e74c3c; width: 100%;">
+                Wgraj plik i nadpisz bazę
+            </button>
+        </form>
     </div>
 
-    <div class="card">
-        <h2>4. Mecze</h2>
-        <p style="font-size: 0.8rem; color: #666;">
-            !!! Wymagane poprawne ID drużyn i turniejów. !!!<br>
-            Format daty: YYYY-MM-DD.
-        </p>
-        <textarea id="matchesJson" style="width: 100%; height: 150px; font-family: monospace;" placeholder='[
-  {
-    "tournament_id": 1,
-    "date": "2024-03-17",
-    "team1_id": 1,
-    "team2_id": 2,
-    "result": "13:10",
-    "phase": "Group A",
-    "format": "BO1"
-  }
-]'></textarea>
-        <button onclick="sendData('matches')" class="btn" style="width: 100%; margin-top: 10px;">Dodaj Mecze</button>
+    <div class="card" style="border-left: 5px solid #2ecc71;">
+        <h2>🔄 Dane Startowe</h2>
+        <p>Załaduj domyślne dane z plików serwerowych (folder <code>json_import_files</code>). Bezpieczne - nie usuwa istniejących danych, tylko dodaje nowe.</p>
+        <button onclick="autoImportFromFiles()" class="btn" style="background-color: #2ecc71; width: 100%;">
+            Załaduj wstępną bazę
+        </button>
     </div>
 
 </div>
@@ -75,73 +43,59 @@
 
 {% block extra_script %}
 <script>
-    function sendData(type) {
-        const textarea = document.getElementById(`${type}Json`);
-        const btn = textarea.nextElementSibling;
-        const originalText = btn.textContent;
+    async function importDatabase(event) {
+        event.preventDefault();
 
-        let jsonData;
-        try {
-            jsonData = JSON.parse(textarea.value);
-        } catch (e) {
-            alert("Błąd formatu JSON! Sprawdź przecinki i nawiasy.");
+        if (!confirm("CZY JESTEŚ PEWIEN? To usunie WSZYSTKIE obecne dane z bazy i zastąpi je zawartością pliku. Tej operacji nie można cofnąć.")) {
             return;
         }
 
-        btn.textContent = "Wysyłanie...";
+        const fileInput = document.getElementById('importFile');
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        const btn = event.target.querySelector('button');
+        const originalText = btn.innerText;
+        btn.innerText = "Trwa importowanie...";
         btn.disabled = true;
 
-        fetch(`/api/batch/${type}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(jsonData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
-            btn.textContent = "Sukces!";
-            setTimeout(() => {
-                btn.textContent = originalText;
-                btn.disabled = false;
-                textarea.value = ''; // Wyczyść pole po sukcesie
-            }, 2000);
-        })
-        .catch(err => {
-            alert("Błąd serwera: " + err);
-            btn.textContent = "Błąd";
+        try {
+            const response = await fetch('/api/import', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                alert("Sukces! Baza danych została przywrócona.");
+                window.location.reload();
+            } else {
+                const err = await response.json();
+                alert("Błąd: " + (err.detail || "Wystąpił błąd podczas importu"));
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Błąd połączenia z serwerem.");
+        } finally {
+            btn.innerText = originalText;
             btn.disabled = false;
-        });
+        }
     }
 
-    function autoImportFromFiles(event) {
-        if (!confirm("Czy chcesz załadować dane z plików znajdujących się w folderze 'json_import_files'?")) return;
+    async function autoImportFromFiles() {
+        if (!confirm("Czy chcesz załadować dane startowe?")) return;
 
-        const btn = event.target;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = "⏳ Przetwarzanie plików...";
-        btn.disabled = true;
-
-        fetch('/api/import/auto-from-files', {
-            method: 'POST'
-        })
-        .then(response => {
-            if (!response.ok) return response.json().then(err => { throw new Error(err.detail || err.message || "Błąd") });
-            return response.json();
-        })
-        .then(data => {
-            alert(data.message);
-            window.location.href = '/'; // Przekieruj na główną, żeby zobaczyć efekty
-        })
-        .catch(err => {
-            alert("Błąd: " + err.message);
-            btn.innerHTML = "❌ Błąd";
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }, 3000);
-        });
+        try {
+            const response = await fetch('/api/import/auto-from-files', { method: 'POST' });
+            const data = await response.json();
+            if (response.ok) {
+                alert(data.message);
+                window.location.reload();
+            } else {
+                alert("Błąd: " + data.detail);
+            }
+        } catch (e) {
+            alert("Błąd sieci.");
+        }
     }
 </script>
 {% endblock %}

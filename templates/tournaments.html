@@ -10,7 +10,7 @@
         <h3>Stwórz nowy turniej</h3>
         <form id="createTournamentForm" onsubmit="createTournament(event)">
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
-                <div style="grid-column: span 1;">
+                <div>
                     <label>Nazwa turnieju:</label>
                     <input type="text" name="name" required style="width: 100%; padding: 8px;">
                 </div>
@@ -20,7 +20,7 @@
                 </div>
                 <div>
                     <label>Typ Drabinki:</label>
-                    <select name="bracket_type" id="bracketTypeSelector" onchange="toggleSpecialWeights()" style="width: 100%; padding: 8px;">
+                    <select name="bracket_type" id="createBracketType" onchange="toggleSpecialWeights('create')" style="width: 100%; padding: 8px;">
                         <option value="Bracket 8 teams">Bracket 8 teams (Standard)</option>
                         <option value="Bracket 6 teams">Bracket 6 teams (2 zespoły w semis)</option>
                         <option value="Bracket 16 teams">Bracket 16 teams</option>
@@ -36,9 +36,8 @@
                 <div><label>Finał:</label><input type="number" step="0.01" name="weight_final" value="0.20" style="width: 100%;"></div>
             </div>
 
-            <div id="specialWeightsSection" style="display: none; margin-top: 15px; background: #e8f6f3; padding: 10px; border-radius: 5px;">
-                <h4 style="color: #16a085;">Wagi Specjalne (dla drużyn startujących w Półfinale)</h4>
-                <p style="font-size: 0.8rem; margin-bottom: 5px;">Te wagi dotyczą tylko dwóch drużyn omijających ćwierćfinał.</p>
+            <div id="createSpecialWeights" style="display: none; margin-top: 15px; background: #e8f6f3; padding: 10px; border-radius: 5px;">
+                <h4 style="color: #16a085;">Wagi Specjalne (Override)</h4>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div><label>SF (Override):</label><input type="number" step="0.01" name="weight_semis_override" placeholder="np. 0.30" style="width: 100%;"></div>
                     <div><label>Finał (Override):</label><input type="number" step="0.01" name="weight_final_override" placeholder="np. 0.30" style="width: 100%;"></div>
@@ -57,7 +56,7 @@
                 <th>Waga</th>
                 <th>Typ</th>
                 <th>Wagi Faz (Std)</th>
-                <th>Akcja</th>
+                <th>Akcje</th>
             </tr>
         </thead>
         <tbody>
@@ -71,37 +70,108 @@
                     O:{{t.weight_overall}} | Q:{{t.weight_quarters}} | S:{{t.weight_semis}} | F:{{t.weight_final}}
                 </td>
                 <td>
-                    <a href="/tournament/{{ t.id }}" class="btn" style="padding: 5px 10px;">Zarządzaj</a>
+                    <a href="/tournament/{{ t.id }}" class="btn" style="padding: 5px 10px; background: #3498db;">Zarządzaj</a>
+
+                    <button onclick='openEditModal({
+                        id: {{ t.id }},
+                        name: "{{ t.name }}",
+                        weight: {{ t.weight }},
+                        bracket_type: "{{ t.bracket_type }}",
+                        weight_overall: {{ t.weight_overall }},
+                        weight_quarters: {{ t.weight_quarters }},
+                        weight_semis: {{ t.weight_semis }},
+                        weight_final: {{ t.weight_final }},
+                        weight_semis_override: {{ t.weight_semis_override or "null" }},
+                        weight_final_override: {{ t.weight_final_override or "null" }}
+                    })' class="btn" style="padding: 5px 10px; background: #f39c12;">Edytuj</button>
+
+                    <button onclick="deleteTournament({{ t.id }})" class="btn" style="padding: 5px 10px; background: #c0392b;">Usuń</button>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+
+<div id="editModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+    <div style="background: white; padding: 20px; border-radius: 8px; width: 600px; max-width: 90%;">
+        <h2>Edytuj Turniej</h2>
+        <form id="editForm" onsubmit="submitEdit(event)">
+            <input type="hidden" name="id" id="editId">
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                <div><label>Nazwa:</label><input type="text" name="name" id="editName" style="width: 100%;"></div>
+                <div><label>Waga (Mnożnik):</label><input type="number" step="0.01" name="weight" id="editWeight" style="width: 100%;"></div>
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label>Typ:</label>
+                <select name="bracket_type" id="editBracketType" onchange="toggleSpecialWeights('edit')" style="width: 100%;">
+                    <option value="Bracket 8 teams">Bracket 8 teams</option>
+                    <option value="Bracket 6 teams">Bracket 6 teams</option>
+                    <option value="Bracket 16 teams">Bracket 16 teams</option>
+                </select>
+            </div>
+
+            <h4>Wagi Faz</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 5px; margin-bottom: 10px;">
+                <div><label>Ovr:</label><input type="number" step="0.01" name="weight_overall" id="editWeightOverall" style="width: 100%;"></div>
+                <div><label>QF:</label><input type="number" step="0.01" name="weight_quarters" id="editWeightQuarters" style="width: 100%;"></div>
+                <div><label>SF:</label><input type="number" step="0.01" name="weight_semis" id="editWeightSemis" style="width: 100%;"></div>
+                <div><label>Final:</label><input type="number" step="0.01" name="weight_final" id="editWeightFinal" style="width: 100%;"></div>
+            </div>
+
+            <div id="editSpecialWeights" style="display: none; background: #e8f6f3; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                <h4>Wagi Override</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div><label>SF Override:</label><input type="number" step="0.01" name="weight_semis_override" id="editOverrideSF" style="width: 100%;"></div>
+                    <div><label>Final Override:</label><input type="number" step="0.01" name="weight_final_override" id="editOverrideFinal" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <div style="text-align: right;">
+                <button type="button" class="btn" style="background: #7f8c8d;" onclick="closeEditModal()">Anuluj</button>
+                <button type="submit" class="btn" style="background: #27ae60;">Zapisz Zmiany</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_script %}
 <script>
-    function toggleSpecialWeights() {
-        const type = document.getElementById("bracketTypeSelector").value;
-        const section = document.getElementById("specialWeightsSection");
+    // --- OBSŁUGA UI ---
+    function toggleSpecialWeights(mode) {
+        // mode = 'create' lub 'edit'
+        const selectId = mode === 'create' ? 'createBracketType' : 'editBracketType';
+        const divId = mode === 'create' ? 'createSpecialWeights' : 'editSpecialWeights';
+
+        const type = document.getElementById(selectId).value;
+        const section = document.getElementById(divId);
         section.style.display = (type === "Bracket 6 teams") ? "block" : "none";
     }
 
+    // --- TWORZENIE ---
     async function createTournament(event) {
         event.preventDefault();
         const formData = new FormData(event.target);
 
+        // Funkcja pomocnicza do pobierania liczby lub null
+        const getFloat = (name) => {
+            const val = formData.get(name);
+            return val ? parseFloat(val) : null;
+        };
+
         const data = {
             name: formData.get("name"),
-            weight: parseFloat(formData.get("weight") || 1.0),
+            weight: getFloat("weight") || 1.0,
             bracket_type: formData.get("bracket_type"),
-            weight_overall: parseFloat(formData.get("weight_overall") || 0),
-            weight_quarters: parseFloat(formData.get("weight_quarters") || 0),
-            weight_semis: parseFloat(formData.get("weight_semis") || 0),
-            weight_final: parseFloat(formData.get("weight_final") || 0),
-            weight_semis_override: formData.get("weight_semis_override") ? parseFloat(formData.get("weight_semis_override")) : null,
-            weight_final_override: formData.get("weight_final_override") ? parseFloat(formData.get("weight_final_override")) : null
+            weight_overall: getFloat("weight_overall"),
+            weight_quarters: getFloat("weight_quarters"),
+            weight_semis: getFloat("weight_semis"),
+            weight_final: getFloat("weight_final"),
+            weight_semis_override: getFloat("weight_semis_override"),
+            weight_final_override: getFloat("weight_final_override")
         };
 
         try {
@@ -115,6 +185,90 @@
         } catch (e) {
             console.error(e);
             alert("Błąd połączenia");
+        }
+    }
+
+    // --- USUWANIE ---
+    async function deleteTournament(id) {
+        if(!confirm("Czy na pewno usunąć ten turniej? Zostaną usunięte również wszystkie mecze i wyniki z nim związane!")) return;
+
+        try {
+            const response = await fetch(`/api/tournaments/${id}`, { method: "DELETE" });
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert("Błąd usuwania");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Błąd sieci");
+        }
+    }
+
+    // --- EDYCJA ---
+    function openEditModal(t) {
+        // Wypełnij formularz danymi
+        document.getElementById('editId').value = t.id;
+        document.getElementById('editName').value = t.name;
+        document.getElementById('editWeight').value = t.weight;
+        document.getElementById('editBracketType').value = t.bracket_type;
+
+        document.getElementById('editWeightOverall').value = t.weight_overall;
+        document.getElementById('editWeightQuarters').value = t.weight_quarters;
+        document.getElementById('editWeightSemis').value = t.weight_semis;
+        document.getElementById('editWeightFinal').value = t.weight_final;
+
+        document.getElementById('editOverrideSF').value = t.weight_semis_override;
+        document.getElementById('editOverrideFinal').value = t.weight_final_override;
+
+        // Pokaż/Ukryj sekcję specjalną w zależności od typu
+        toggleSpecialWeights('edit');
+
+        // Pokaż modal
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    async function submitEdit(event) {
+        event.preventDefault();
+        const id = document.getElementById('editId').value;
+        const formData = new FormData(event.target);
+
+        const getFloat = (name) => {
+            const val = formData.get(name);
+            return (val && val !== "") ? parseFloat(val) : null;
+        };
+
+        const data = {
+            name: formData.get("name"),
+            weight: getFloat("weight"),
+            bracket_type: formData.get("bracket_type"),
+            weight_overall: getFloat("weight_overall"),
+            weight_quarters: getFloat("weight_quarters"),
+            weight_semis: getFloat("weight_semis"),
+            weight_final: getFloat("weight_final"),
+            weight_semis_override: getFloat("weight_semis_override"),
+            weight_final_override: getFloat("weight_final_override")
+        };
+
+        try {
+            const response = await fetch(`/api/tournaments/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert("Błąd edycji");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Błąd sieci");
         }
     }
 </script>
