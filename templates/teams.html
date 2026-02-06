@@ -1,112 +1,158 @@
 {% extends "base.html" %}
 
-{% block title %}Drużyny - CS2 Player Tracker{% endblock %}
+{% block title %}Drużyny - CS2 Tracker{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h1>Zarządzanie Drużynami</h1>
-</div>
+<div style="max-width: 1200px; margin: 0 auto;">
 
-<div class="card">
-    <h2>Dodaj Nową Drużynę</h2>
-    <form onsubmit="createTeam(event)">
-        <div class="form-group">
-            <label for="teamName">Nazwa drużyny:</label>
-            <input type="text" id="teamName" required>
-        </div>
-        <div class="form-group">
-            <label for="teamLogo">URL Logo:</label>
-            <input type="text" id="teamLogo" placeholder="https://example.com/logo.png">
-        </div>
-        <button type="submit" class="btn">Dodaj Drużynę</button>
-    </form>
-</div>
+    <div class="card" style="text-align: center; margin-bottom: 20px;">
+        <h1>Drużyny</h1>
+        <p>Zarządzaj zespołami biorącymi udział w turniejach.</p>
+    </div>
 
-<div class="card">
-    <h2>Lista Drużyn</h2>
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 80px;">Logo</th>
-                <th>Nazwa</th>
-                <th style="width: 200px;">Akcje</th>
-            </tr>
-        </thead>
-        <tbody id="teamsTable">
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>Lista Drużyn</h2>
+            <button onclick="openAddTeamModal()" class="btn" style="background-color: #27ae60;">
+                + Dodaj Drużynę
+            </button>
+        </div>
+
+        <div class="player-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;">
             {% for team in teams %}
-            <tr>
-                <td>
+            <div class="player-card" style="background: white; border: 1px solid #eee; border-radius: 8px; padding: 20px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+
+                <div style="height: 100px; display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
                     {% if team.logo_url %}
-                    <img src="{{ team.logo_url }}" alt="{{ team.name }}" style="width: 50px; height: 50px; object-fit: contain;">
+                    <img src="{{ team.logo_url }}" alt="{{ team.name }}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
                     {% else %}
-                    <div style="width: 50px; height: 50px; background: #ddd; display: flex; align-items: center; justify-content: center;">🛡️</div>
+                    <div style="font-size: 3rem;">🛡️</div>
                     {% endif %}
-                </td>
-                <td>{{ team.name }}</td>
-                <td>
-                    <button onclick="editTeam({{ team.id }}, '{{ team.name }}', '{{ team.logo_url or '' }}')" class="btn" style="padding: 0.5rem 1rem; font-size: 0.9rem; background-color: #3498db; margin-right: 5px;">Edytuj</button>
-                    <button onclick="deleteTeam({{ team.id }})" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Usuń</button>
-                </td>
-            </tr>
+                </div>
+
+                <h3 style="margin: 10px 0;">{{ team.name }}</h3>
+                <p style="color: #7f8c8d; font-size: 0.9rem;">Liczba graczy: {{ team.players|length }}</p>
+
+                <div style="margin-top: 15px; display: flex; gap: 5px; justify-content: center;">
+                    <button onclick='openEditTeamModal({id: {{ team.id }}, name: "{{ team.name }}", logo_url: "{{ team.logo_url or "" }}"})'
+                            class="btn" style="background-color: #f39c12; font-size: 0.8rem; padding: 5px 10px;">Edytuj</button>
+                    <button onclick="deleteTeam({{ team.id }})"
+                            class="btn" style="background-color: #c0392b; font-size: 0.8rem; padding: 5px 10px;">Usuń</button>
+                </div>
+            </div>
             {% endfor %}
-        </tbody>
-    </table>
+        </div>
+    </div>
+</div>
+
+<div id="teamModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+    <div style="background: white; padding: 25px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+        <h2 id="modalTitle" style="margin-top: 0;">Dodaj Drużynę</h2>
+
+        <form id="teamForm" onsubmit="submitTeamForm(event)">
+            <input type="hidden" id="teamId"> <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Nazwa:</label>
+                <input type="text" name="name" id="teamName" required style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Logo URL:</label>
+                <input type="url" name="logo_url" id="teamLogo" placeholder="https://..." style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+
+            <div style="text-align: right;">
+                <button type="button" class="btn" style="background: #95a5a6; margin-right: 5px;" onclick="closeTeamModal()">Anuluj</button>
+                <button type="submit" class="btn" style="background: #27ae60;">Zapisz</button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_script %}
 <script>
-    function createTeam(event) {
+    const modal = document.getElementById('teamModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const teamIdInput = document.getElementById('teamId');
+    const nameInput = document.getElementById('teamName');
+    const logoInput = document.getElementById('teamLogo');
+
+    function openAddTeamModal() {
+        modalTitle.innerText = "Dodaj Drużynę";
+        teamIdInput.value = "";
+        nameInput.value = "";
+        logoInput.value = "";
+        modal.style.display = 'flex';
+    }
+
+    function openEditTeamModal(team) {
+        modalTitle.innerText = "Edytuj Drużynę";
+        teamIdInput.value = team.id;
+        nameInput.value = team.name;
+        logoInput.value = team.logo_url;
+        modal.style.display = 'flex';
+    }
+
+    function closeTeamModal() {
+        modal.style.display = 'none';
+    }
+
+    async function submitTeamForm(event) {
         event.preventDefault();
-        const name = document.getElementById('teamName').value;
-        const logo_url = document.getElementById('teamLogo').value || null;
 
-        fetch('/api/teams/', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ name, logo_url })
-        }).then(res => {
-            if(res.ok) window.location.reload();
-            else alert("Błąd tworzenia");
-        });
-    }
+        const id = teamIdInput.value;
+        const isEdit = !!id;
 
-    // --- NOWA FUNKCJA EDYCJI ---
-    function editTeam(id, oldName, oldLogo) {
-        const newName = prompt("Edytuj nazwę drużyny:", oldName);
-        if (newName === null) return; // Anulowano
+        const data = {
+            name: nameInput.value,
+            logo_url: logoInput.value || null
+        };
 
-        const newLogo = prompt("Wklej nowy link do logo (zostaw puste aby usunąć):", oldLogo);
-        if (newLogo === null) return; // Anulowano
+        const url = isEdit ? `/api/teams/${id}` : "/api/teams/";
+        const method = isEdit ? "PUT" : "POST";
 
-        const body = { name: newName };
-        // Jeśli logo jest puste, wyślij null, w przeciwnym razie wyślij string
-        if (newLogo.trim() !== "") {
-            body.logo_url = newLogo;
-        } else {
-            body.logo_url = null;
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const err = await response.json();
+                // Tutaj obsłużymy Twój błąd 400
+                alert("Błąd: " + (err.detail || "Nie udało się zapisać drużyny."));
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Błąd połączenia z serwerem.");
         }
-
-        fetch(`/api/teams/${id}`, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(body)
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('Błąd edycji');
-            return response.json();
-        })
-        .then(() => window.location.reload())
-        .catch(err => alert(err.message));
     }
 
-    function deleteTeam(teamId) {
-        if (!confirm('Czy na pewno chcesz usunąć tę drużynę?')) return;
-        fetch(`/api/teams/${teamId}`, { method: 'DELETE' })
-        .then(res => {
-            if(res.ok) window.location.reload();
-            else alert("Błąd usuwania (sprawdź czy drużyna nie gra w meczach)");
-        });
+    async function deleteTeam(id) {
+        if (!confirm("Czy na pewno chcesz usunąć tę drużynę? Spowoduje to usunięcie powiązanych danych!")) return;
+
+        try {
+            const response = await fetch(`/api/teams/${id}`, {
+                method: "DELETE"
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert("Błąd usuwania");
+            }
+        } catch (e) {
+            alert("Błąd sieci");
+        }
+    }
+
+    window.onclick = function(event) {
+        if (event.target === modal) {
+            closeTeamModal();
+        }
     }
 </script>
 {% endblock %}
