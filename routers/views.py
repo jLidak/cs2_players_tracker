@@ -22,9 +22,13 @@ def index(request: Request, db: Session = Depends(get_db)):
         schemas.PlayerWithTeam.model_validate(p).model_dump(mode='json')
         for p in players_db
     ]
+
+    teams = db.query(models.Team).order_by(models.Team.name).all()
+
     return templates.TemplateResponse("index.html", {
         "request": request,
-        "players": players_data
+        "players": players_data,
+        "teams": teams  # Przekazujemy do szablonu
     })
 
 

@@ -3,131 +3,157 @@
 {% block title %}Gracze - CS2 Player Tracker{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h1>CS2 Player Tracker</h1>
-    <p>Śledź statystyki najlepszych graczy Counter-Strike 2</p>
-</div>
+<div style="max-width: 1200px; margin: 0 auto;">
 
-<div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
-        <h2>Gracze</h2>
-        <div style="display: flex; gap: 10px;">
-            <a href="/api/export/" class="btn" download="database.json">Eksport JSON</a>
-<!--            <button onclick="document.getElementById('importFile').click()" class="btn">Import JSON</button>-->
-<!--            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">-->
+    <div class="card" style="text-align: center; margin-bottom: 20px;">
+        <h1>CS2 Player Tracker</h1>
+        <p>Śledź statystyki najlepszych graczy Counter-Strike 2</p>
+    </div>
 
-            <button onclick="clearDatabase()" class="btn btn-danger" style="background-color: #c0392b;">Wyczyść całą bazę</button>
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+            <h2>Gracze</h2>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button onclick="openAddPlayerModal()" class="btn" style="background-color: #27ae60;">+ Dodaj Gracza</button>
+
+                <a href="/api/export/" class="btn" style="background-color: #3498db; text-decoration: none;">Eksport JSON</a>
+
+                <button onclick="clearDatabase()" class="btn btn-danger" style="background-color: #c0392b;">Wyczyść bazę</button>
+            </div>
+        </div>
+
+        <div class="search-box" style="margin-bottom: 20px;">
+            <input type="text" id="searchInput" placeholder="Wyszukaj gracza..." oninput="searchPlayers()" style="width: 100%; padding: 10px; font-size: 1rem; border: 1px solid #ddd; border-radius: 5px;">
+        </div>
+
+        <div class="player-grid" id="playerGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+            {% for player in players %}
+            <div class="player-card" onclick="window.location.href='/player/{{ player.id }}'" style="background: white; border: 1px solid #eee; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+
+                {% if player.photo_url %}
+                <img src="{{ player.photo_url }}" alt="{{ player.nickname }}" class="player-photo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 3px solid #f1f1f1;">
+                {% else %}
+                <div style="width: 100px; height: 100px; border-radius: 50%; background: #eee; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #aaa;">👤</div>
+                {% endif %}
+
+                <h3 style="margin: 5px 0; color: #333;">{{ player.nickname }}</h3>
+
+                {% if player.team %}
+                <p style="color: #666; margin: 0; font-size: 0.9rem;">{{ player.team.name }}</p>
+                {% else %}
+                <p style="color: #999; margin: 0; font-size: 0.9rem;">Bez drużyny</p>
+                {% endif %}
+            </div>
+            {% endfor %}
         </div>
     </div>
+</div>
 
-    <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Wyszukaj gracza..." oninput="searchPlayers()">
-    </div>
+<div id="addPlayerModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+    <div style="background: white; padding: 25px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+        <h2 style="margin-top: 0;">Dodaj nowego zawodnika</h2>
 
-    <div class="player-grid" id="playerGrid">
-        {% for player in players %}
-        <div class="player-card" onclick="window.location.href='/player/{{ player.id }}'">
-            {% if player.photo_url %}
-            <img src="{{ player.photo_url }}" alt="{{ player.nickname }}" class="player-photo">
-            {% else %}
-            <div style="width: 120px; height: 120px; border-radius: 50%; background: #ddd; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 3rem;">👤</div>
-            {% endif %}
-            <h3>{{ player.nickname }}</h3>
-            {% if player.team %}
-            <p style="color: #666;">{{ player.team.name }}</p>
-            {% else %}
-            <p style="color: #999;">Bez drużyny</p>
-            {% endif %}
-        </div>
-        {% endfor %}
+        <form onsubmit="submitAddPlayer(event)">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Nick:</label>
+                <input type="text" name="nickname" required style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Drużyna:</label>
+                <select name="team_id" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="">-- Wybierz drużynę --</option>
+                    {% for team in teams %} <option value="{{ team.id }}">{{ team.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Link do zdjęcia (opcjonalnie):</label>
+                <input type="url" name="photo_url" placeholder="https://..." style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+
+            <div style="text-align: right;">
+                <button type="button" class="btn" style="background: #95a5a6; margin-right: 5px;" onclick="closeAddPlayerModal()">Anuluj</button>
+                <button type="submit" class="btn" style="background: #27ae60;">Zapisz</button>
+            </div>
+        </form>
     </div>
 </div>
+
+<style>
+    /* Style inline dla pewności, że kafelki będą wyglądać dobrze */
+    .player-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+    }
+</style>
 {% endblock %}
 
 {% block extra_script %}
 <script>
+    // Dane pobrane z Jinja do szybkiego wyszukiwania
     let allPlayers = {{ players | tojson }};
 
+    // --- WYSZUKIWARKA (Client-side) ---
     function searchPlayers() {
-        const query = document.getElementById('searchInput').value;
+        const query = document.getElementById('searchInput').value.toLowerCase();
 
-        if (!query) {
-            displayAllPlayers();
-            return;
-        }
+        // Filtrujemy lokalnie zamiast pytać API (szybciej i prościej)
+        const filteredPlayers = allPlayers.filter(player =>
+            player.nickname.toLowerCase().includes(query) ||
+            (player.team && player.team.name.toLowerCase().includes(query))
+        );
 
-        fetch(`/api/search/players/?query=${encodeURIComponent(query)}`)
-            .then(response => response.json())
-            .then(players => {
-                displayPlayers(players);
-            })
-            .catch(err => {
-                console.error('Search error:', err);
-                displayAllPlayers();
-            });
+        displayPlayers(filteredPlayers);
     }
 
     function displayPlayers(players) {
         const grid = document.getElementById('playerGrid');
         grid.innerHTML = '';
 
+        if (players.length === 0) {
+            grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #7f8c8d;">Nie znaleziono graczy.</p>';
+            return;
+        }
+
         players.forEach(player => {
             const card = document.createElement('div');
             card.className = 'player-card';
             card.onclick = () => window.location.href = `/player/${player.id}`;
+            // Styl musi być tutaj powtórzony dla dynamicznie dodawanych elementów, lub w CSS
+            card.style.cssText = "background: white; border: 1px solid #eee; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);";
 
             let photoHtml = '';
             if (player.photo_url) {
-                photoHtml = `<img src="${player.photo_url}" alt="${player.nickname}" class="player-photo">`;
+                photoHtml = `<img src="${player.photo_url}" alt="${player.nickname}" class="player-photo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 3px solid #f1f1f1;">`;
             } else {
-                photoHtml = '<div style="width: 120px; height: 120px; border-radius: 50%; background: #ddd; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 3rem;">👤</div>';
+                photoHtml = '<div style="width: 100px; height: 100px; border-radius: 50%; background: #eee; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #aaa;">👤</div>';
             }
 
             let teamHtml = '';
             if (player.team) {
-                teamHtml = `<p style="color: #666;">${player.team.name}</p>`;
+                teamHtml = `<p style="color: #666; margin: 0; font-size: 0.9rem;">${player.team.name}</p>`;
             } else {
-                teamHtml = '<p style="color: #999;">Bez drużyny</p>';
+                teamHtml = '<p style="color: #999; margin: 0; font-size: 0.9rem;">Bez drużyny</p>';
             }
 
             card.innerHTML = `
                 ${photoHtml}
-                <h3>${player.nickname}</h3>
+                <h3 style="margin: 5px 0; color: #333;">${player.nickname}</h3>
                 ${teamHtml}
             `;
+
+            // Dodajemy efekt hover przez JS dla dynamicznych elementów (opcjonalne, CSS lepsze)
+            card.onmouseenter = function() { this.style.transform = "translateY(-5px)"; this.style.boxShadow = "0 5px 15px rgba(0,0,0,0.1)"; }
+            card.onmouseleave = function() { this.style.transform = "translateY(0)"; this.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)"; }
 
             grid.appendChild(card);
         });
     }
 
-    function displayAllPlayers() {
-        displayPlayers(allPlayers);
-    }
-
-    function importData(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const formData = new FormData();
-        formData.append('file', file);
-
-        fetch('/api/import/', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            alert('Import zakończony pomyślnie!');
-            window.location.reload();
-        })
-        .catch(err => {
-            alert('Błąd importu: ' + err);
-        });
-    }
-
-    // --- NOWA FUNKCJA CZYSZCZENIA ---
+    // --- CZYSZCZENIE BAZY ---
     function clearDatabase() {
-        // Podwójne potwierdzenie dla bezpieczeństwa
         if (!confirm("UWAGA! Czy na pewno chcesz usunąć WSZYSTKIE dane z bazy?")) return;
         if (!confirm("To jest operacja nieodwracalna. Potwierdź ostatecznie.")) return;
 
@@ -143,6 +169,53 @@
             }
         })
         .catch(err => alert("Błąd połączenia: " + err));
+    }
+
+    // --- MODAL DODAWANIA GRACZA ---
+    function openAddPlayerModal() {
+        document.getElementById('addPlayerModal').style.display = 'flex';
+    }
+
+    function closeAddPlayerModal() {
+        document.getElementById('addPlayerModal').style.display = 'none';
+    }
+
+    async function submitAddPlayer(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        const teamIdVal = formData.get("team_id");
+
+        const data = {
+            nickname: formData.get("nickname"),
+            team_id: teamIdVal ? parseInt(teamIdVal) : null,
+            photo_url: formData.get("photo_url") || null
+        };
+
+        try {
+            const response = await fetch("/api/players/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const err = await response.json();
+                alert("Błąd: " + (err.detail || "Wystąpił błąd"));
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Błąd połączenia z serwerem.");
+        }
+    }
+
+    // Zamknij modal po kliknięciu w tło
+    window.onclick = function(event) {
+        const modal = document.getElementById('addPlayerModal');
+        if (event.target === modal) {
+            closeAddPlayerModal();
+        }
     }
 </script>
 {% endblock %}

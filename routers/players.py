@@ -17,37 +17,26 @@ router = APIRouter(
 
 # --- CRUD ---
 
+# --- NOWY ENDPOINT: DODAWANIE GRACZA ---
 @router.post("/api/players/", response_model=schemas.Player)
-def create_player(player: schemas.PlayerCreate, db: Session = Depends(get_db)) -> models.Player:
-    """
-    Tworzy nowego gracza w bazie danych.
-    Sprawdza unikalność nicku oraz istnienie przypisanej drużyny.
+def create_player(player: schemas.PlayerCreate, db: Session = Depends(get_db)):
+    """Tworzy nowego zawodnika."""
+    # Sprawdź czy nick jest zajęty (opcjonalne, ale dobra praktyka)
+    existing_player = db.query(models.Player).filter(models.Player.nickname == player.nickname).first()
+    if existing_player:
+        raise HTTPException(status_code=400, detail="Zawodnik o takim nicku już istnieje.")
 
-    Args:
-        player (schemas.PlayerCreate): Model danych wejściowych dla nowego gracza.
-        db (Session): Sesja bazy danych.
-
-    Returns:
-        models.Player: Obiekt nowo utworzonego gracza.
-
-    Raises:
-        HTTPException(400): Jeśli gracz o podanym nicku już istnieje.
-        HTTPException(404): Jeśli podane ID drużyny nie istnieje w bazie.
-    """
-    existing = db.query(models.Player).filter(models.Player.nickname == player.nickname).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Player with this nickname already exists")
-
-    if player.team_id is not None:
+    # Sprawdź czy drużyna istnieje (jeśli podano team_id)
+    if player.team_id:
         team = db.query(models.Team).filter(models.Team.id == player.team_id).first()
         if not team:
-            raise HTTPException(status_code=404, detail="Team not found")
+            raise HTTPException(status_code=404, detail="Wybrana drużyna nie istnieje.")
 
-    db_player = models.Player(**player.model_dump())
-    db.add(db_player)
+    new_player = models.Player(**player.model_dump())
+    db.add(new_player)
     db.commit()
-    db.refresh(db_player)
-    return db_player
+    db.refresh(new_player)
+    return new_player
 
 
 @router.get("/api/players/", response_model=List[schemas.PlayerWithTeam])
