@@ -63,12 +63,21 @@ class Tournament(TournamentBase):
 class AddTeamToTournament(BaseModel):
     team_id: int
     starts_in_semis: bool = False
+    rounds_group: int = 1
+    rounds_quarters: int = 1
+    rounds_semis: int = 1
+    rounds_final: int = 1
 
 class TournamentTeam(BaseModel):
     id: int
     tournament_id: int
     team_id: int
     starts_in_semis: bool
+    model_config = ConfigDict(from_attributes=True)
+    rounds_group: int
+    rounds_quarters: int
+    rounds_semis: int
+    rounds_final: int
     model_config = ConfigDict(from_attributes=True)
 
 # --- PERFORMANCE ---

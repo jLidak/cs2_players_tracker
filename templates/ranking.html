@@ -43,7 +43,7 @@
                 </td>
                 <td style="font-weight: 600;">{{ entry.nickname }}</td>
                 <td>{{ entry.team_name if entry.team_name else '-' }}</td>
-                <td style="text-align: right; font-weight: bold; color: #667eea;">{{ "%.2f"|format(entry.total_points) }}</td>
+                <td style="text-align: right; font-weight: bold; color: #667eea;">{{  entry.total_points }}</td>
             </tr>
             {% endfor %}
         </tbody>

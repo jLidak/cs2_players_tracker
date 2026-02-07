@@ -68,6 +68,12 @@ class TournamentTeam(Base):
     tournament: Mapped["Tournament"] = relationship("Tournament", back_populates="participating_teams")
     team: Mapped["Team"] = relationship("Team", back_populates="tournament_participations")
 
+    # --- NOWE POLA: LICZBA RUND ---
+    rounds_group: Mapped[int] = mapped_column(Integer, default=1)
+    rounds_quarters: Mapped[int] = mapped_column(Integer, default=1)
+    rounds_semis: Mapped[int] = mapped_column(Integer, default=1)
+    rounds_final: Mapped[int] = mapped_column(Integer, default=1)
+
 
 class PlayerTournamentPerformance(Base):
     __tablename__ = "player_tournament_performances"

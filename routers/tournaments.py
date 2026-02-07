@@ -78,11 +78,12 @@ def delete_tournament(tournament_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Turniej usunięty"}
 
+
 @router.post("/api/tournaments/{tournament_id}/add_team")
 def add_team_to_tournament(
-    tournament_id: int,
-    data: schemas.AddTeamToTournament,
-    db: Session = Depends(get_db)
+        tournament_id: int,
+        data: schemas.AddTeamToTournament,
+        db: Session = Depends(get_db)
 ):
     tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
     if not tournament:
@@ -94,14 +95,25 @@ def add_team_to_tournament(
     ).first()
 
     if exists:
+        # Aktualizacja istniejącego wpisu
         exists.starts_in_semis = data.starts_in_semis
+        exists.rounds_group = data.rounds_group
+        exists.rounds_quarters = data.rounds_quarters
+        exists.rounds_semis = data.rounds_semis
+        exists.rounds_final = data.rounds_final
     else:
+        # Tworzenie nowego wpisu
         new_entry = models.TournamentTeam(
             tournament_id=tournament_id,
             team_id=data.team_id,
-            starts_in_semis=data.starts_in_semis
+            starts_in_semis=data.starts_in_semis,
+            rounds_group=data.rounds_group,
+            rounds_quarters=data.rounds_quarters,
+            rounds_semis=data.rounds_semis,
+            rounds_final=data.rounds_final
         )
         db.add(new_entry)
+
     db.commit()
     return {"message": "Team added/updated in tournament"}
 

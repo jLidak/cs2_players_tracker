@@ -24,41 +24,73 @@
 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-top: 20px;">
 
     <div class="card">
-        <h3>Uczestnicy</h3>
+        <h3>Uczestnicy i Rundy</h3>
 
         <div style="background: #f1f1f1; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-            <form onsubmit="addTeam(event)">
-                <label>Dodaj drużynę:</label>
-                <select name="team_id" style="width: 100%; margin-bottom: 10px; padding: 5px;">
+            <strong style="display:block; margin-bottom:5px;">Dodaj nową drużynę:</strong>
+            <form onsubmit="addTeam(event)" style="display: flex; gap: 5px; flex-wrap: wrap;">
+                <select name="team_id" style="flex-grow: 1; padding: 5px;">
                     {% for team in all_teams %}
                     <option value="{{ team.id }}">{{ team.name }}</option>
                     {% endfor %}
                 </select>
+                <button type="submit" class="btn" style="font-size: 0.8rem;">Dodaj</button>
 
                 {% if tournament.bracket_type == "Bracket 6 teams" %}
-                <div style="margin-bottom: 10px;">
+                <div style="width: 100%; margin-top: 5px;">
                     <input type="checkbox" name="starts_in_semis" id="semisCheck">
-                    <label for="semisCheck">Zaczyna od półfinału (Skip QF)</label>
+                    <label for="semisCheck">Start w półfinale</label>
                 </div>
                 {% endif %}
-
-                <button type="submit" class="btn" style="width: 100%; font-size: 0.8rem;">Dodaj</button>
             </form>
         </div>
 
         <ul style="list-style: none; padding: 0;">
             {% for p in participations %}
-            <li style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                <span>
-                    <strong>{{ p.team.name }}</strong>
+            <li style="padding: 10px; border-bottom: 1px solid #eee;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
+                    <strong style="font-size: 1.1em;">{{ p.team.name }}</strong>
+                    <button onclick="removeTeam({{ p.team.id }})" style="background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.7rem;">Usuń</button>
+                </div>
+
+                {% if p.starts_in_semis %}
+                <div style="font-size: 0.75rem; color: green; margin-bottom: 5px;">(Start w Półfinale)</div>
+                {% endif %}
+
+                <form onsubmit="updateTeamStats(event, {{ p.team.id }}, {{ p.starts_in_semis|lower }})" style="display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 5px; align-items: end;">
+
+                    <div style="text-align: center;">
+                        <label style="font-size: 0.7rem; display:block;">Group</label>
+                        <input type="number" name="rounds_group" value="{{ p.rounds_group }}" min="0" style="width: 100%; padding: 3px; text-align: center;">
+                    </div>
+
                     {% if p.starts_in_semis %}
-                    <br><span style="font-size: 0.7rem; color: green; font-weight:bold;">(Start w Półfinale)</span>
+                         <div style="text-align: center; opacity: 0.5;">
+                            <label style="font-size: 0.7rem; display:block;">QF</label>
+                            <input type="number" value="0" disabled style="width: 100%; padding: 3px; text-align: center; background: #eee;">
+                        </div>
+                    {% else %}
+                        <div style="text-align: center;">
+                            <label style="font-size: 0.7rem; display:block;">QF</label>
+                            <input type="number" name="rounds_quarters" value="{{ p.rounds_quarters }}" min="0" style="width: 100%; padding: 3px; text-align: center;">
+                        </div>
                     {% endif %}
-                </span>
-                <button onclick="removeTeam({{ p.team.id }})" style="background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.8rem;" title="Usuń drużynę z turnieju">X</button>
+
+                    <div style="text-align: center;">
+                        <label style="font-size: 0.7rem; display:block;">SF</label>
+                        <input type="number" name="rounds_semis" value="{{ p.rounds_semis }}" min="0" style="width: 100%; padding: 3px; text-align: center;">
+                    </div>
+
+                    <div style="text-align: center;">
+                        <label style="font-size: 0.7rem; display:block;">Final</label>
+                        <input type="number" name="rounds_final" value="{{ p.rounds_final }}" min="0" style="width: 100%; padding: 3px; text-align: center;">
+                    </div>
+
+                    <button type="submit" class="btn" style="padding: 4px 8px; font-size: 0.8rem; background-color: #3498db; height: 28px;">Zapisz</button>
+                </form>
             </li>
             {% else %}
-            <li style="color: #888;">Brak drużyn. Dodaj uczestników.</li>
+            <li style="color: #888; text-align: center; padding: 10px;">Brak drużyn.</li>
             {% endfor %}
         </ul>
     </div>
@@ -214,6 +246,53 @@
         } catch (e) {
             console.error(e);
             alert("Błąd sieci");
+            btn.disabled = false;
+        }
+    }
+
+    // --- NOWE: AKTUALIZACJA STATYSTYK DRUŻYNY (RUNDY) ---
+    async function updateTeamStats(event, teamId, startsInSemis) {
+        event.preventDefault();
+        const form = event.target;
+        const btn = form.querySelector('button[type="submit"]');
+        const originalText = btn.innerText;
+
+        btn.innerText = "...";
+        btn.disabled = true;
+
+        const data = {
+            team_id: teamId,
+            starts_in_semis: startsInSemis,
+            rounds_group: parseInt(form.rounds_group.value) || 0,
+            rounds_quarters: form.rounds_quarters ? (parseInt(form.rounds_quarters.value) || 0) : 0,
+            rounds_semis: parseInt(form.rounds_semis.value) || 0,
+            rounds_final: parseInt(form.rounds_final.value) || 0
+        };
+
+        try {
+            // Używamy tego samego endpointu co dodawanie, on obsługuje "upsert" (update jeśli istnieje)
+            const response = await fetch(`/api/tournaments/${TOURNAMENT_ID}/add_team`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                btn.innerText = "OK";
+                btn.style.backgroundColor = "#2ecc71";
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.style.backgroundColor = "#3498db";
+                    btn.disabled = false;
+                }, 1000);
+            } else {
+                alert("Błąd zapisu rund");
+                btn.innerText = "Błąd";
+                btn.disabled = false;
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Błąd połączenia");
             btn.disabled = false;
         }
     }
