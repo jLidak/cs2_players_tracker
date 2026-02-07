@@ -58,6 +58,12 @@ def get_ranking(db: Session = Depends(get_db)):
                     tournament_points += (perf.rating_semis - 1.0) * 100 * tour.weight_semis
                 if perf.rating_final and perf.rating_final > 1.0:
                     tournament_points += (perf.rating_final - 1.0) * 100 * tour.weight_final
+                if perf.rating_quarters and perf.rating_quarters < 1.0:
+                    tournament_points -= (1.0 - perf.rating_quarters) * 100 * tour.weight_quarters
+                if perf.rating_semis and perf.rating_semis < 1.0:
+                    tournament_points -= (1.0 - perf.rating_semis) * 100 * tour.weight_semis
+                if perf.rating_final and perf.rating_final < 1.0:
+                    tournament_points -= (1.0 - perf.rating_final) * 100 * tour.weight_final
 
             total_points += tournament_points * tour.weight
 
