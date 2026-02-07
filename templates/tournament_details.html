@@ -57,33 +57,33 @@
                 <div style="font-size: 0.75rem; color: green; margin-bottom: 5px;">(Start w Półfinale)</div>
                 {% endif %}
 
-                <form onsubmit="updateTeamStats(event, {{ p.team.id }}, {{ p.starts_in_semis|lower }})" style="display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 5px; align-items: end;">
+                <form onsubmit="updateTeamStats(event, {{ p.team.id }}, {{ p.starts_in_semis|lower }})" style="display: grid; grid-template-columns: repeat(4, minmax(60px, 1fr)) auto; gap: 5px; align-items: end;">
 
                     <div style="text-align: center;">
                         <label style="font-size: 0.7rem; display:block;">Group</label>
-                        <input type="number" name="rounds_group" value="{{ p.rounds_group }}" min="0" style="width: 100%; padding: 3px; text-align: center;">
+                        <input type="number" name="rounds_group" value="{{ p.rounds_group }}" min="0" style="width: 100%; min-width: 50px; padding: 3px; text-align: center;">
                     </div>
 
                     {% if p.starts_in_semis %}
                          <div style="text-align: center; opacity: 0.5;">
                             <label style="font-size: 0.7rem; display:block;">QF</label>
-                            <input type="number" value="0" disabled style="width: 100%; padding: 3px; text-align: center; background: #eee;">
+                            <input type="number" value="0" disabled style="width: 100%; min-width: 50px; padding: 3px; text-align: center; background: #eee;">
                         </div>
                     {% else %}
                         <div style="text-align: center;">
                             <label style="font-size: 0.7rem; display:block;">QF</label>
-                            <input type="number" name="rounds_quarters" value="{{ p.rounds_quarters }}" min="0" style="width: 100%; padding: 3px; text-align: center;">
+                            <input type="number" name="rounds_quarters" value="{{ p.rounds_quarters }}" min="0" style="width: 100%; min-width: 50px; padding: 3px; text-align: center;">
                         </div>
                     {% endif %}
 
                     <div style="text-align: center;">
                         <label style="font-size: 0.7rem; display:block;">SF</label>
-                        <input type="number" name="rounds_semis" value="{{ p.rounds_semis }}" min="0" style="width: 100%; padding: 3px; text-align: center;">
+                        <input type="number" name="rounds_semis" value="{{ p.rounds_semis }}" min="0" style="width: 100%; min-width: 50px; padding: 3px; text-align: center;">
                     </div>
 
                     <div style="text-align: center;">
                         <label style="font-size: 0.7rem; display:block;">Final</label>
-                        <input type="number" name="rounds_final" value="{{ p.rounds_final }}" min="0" style="width: 100%; padding: 3px; text-align: center;">
+                        <input type="number" name="rounds_final" value="{{ p.rounds_final }}" min="0" style="width: 100%; min-width: 50px; padding: 3px; text-align: center;">
                     </div>
 
                     <button type="submit" class="btn" style="padding: 4px 8px; font-size: 0.8rem; background-color: #3498db; height: 28px;">Zapisz</button>

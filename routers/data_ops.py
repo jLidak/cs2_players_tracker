@@ -145,3 +145,39 @@ def import_auto_from_files(db: Session = Depends(get_db)):
         return {"message": "Dane startowe załadowane."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/import_data/")
+def import_from_json(data: schemas.ImportData, db: Session = Depends(get_db)):
+    count_teams = 0
+    count_players = 0
+
+    for t_data in data.teams:
+        # 1. Sprawdź czy drużyna istnieje, jeśli nie - stwórz
+        team = db.query(models.Team).filter(models.Team.name == t_data.name).first()
+        if not team:
+            team = models.Team(name=t_data.name, logo_url=t_data.logo_url)
+            db.add(team)
+            db.commit()
+            db.refresh(team)
+            count_teams += 1
+
+        # 2. Przetwórz zawodników w tej drużynie
+        for p_data in t_data.players:
+            player = db.query(models.Player).filter(models.Player.nickname == p_data.nickname).first()
+            if not player:
+                player = models.Player(
+                    nickname=p_data.nickname,
+                    photo_url=p_data.photo_url,
+                    team_id=team.id
+                )
+                db.add(player)
+                count_players += 1
+            else:
+                # Opcjonalnie: Aktualizuj przynależność klubową istniejącego gracza
+                if player.team_id != team.id:
+                    player.team_id = team.id
+                    db.add(player)
+
+    db.commit()
+    return {"message": f"Sukces! Dodano {count_teams} nowych drużyn i {count_players} nowych zawodników."}

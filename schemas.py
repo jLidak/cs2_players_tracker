@@ -165,3 +165,16 @@ class DatabaseExport(BaseModel):
     matches: List[Match]
     maps: List[Map]
     player_ratings: List[PlayerRating]
+
+# --- IMPORT ---
+class PlayerImport(BaseModel):
+    nickname: str
+    photo_url: Optional[str] = None
+
+class TeamImport(BaseModel):
+    name: str
+    logo_url: Optional[str] = None
+    players: List[PlayerImport] = []
+
+class ImportData(BaseModel):
+    teams: List[TeamImport]
