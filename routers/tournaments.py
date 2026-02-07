@@ -130,3 +130,34 @@ def set_player_performance(
         db.commit()
         db.refresh(new_perf)
         return new_perf
+
+@router.delete("/api/tournaments/{tournament_id}/teams/{team_id}")
+def remove_team_from_tournament(tournament_id: int, team_id: int, db: Session = Depends(get_db)):
+    """
+    Usuwa drużynę z turnieju oraz usuwa wyniki (ratingi) graczy tej drużyny w tym turnieju.
+    """
+    # 1. Szukamy wpisu w tabeli łączącej (udział w turnieju)
+    participation = db.query(models.TournamentTeam).filter(
+        models.TournamentTeam.tournament_id == tournament_id,
+        models.TournamentTeam.team_id == team_id
+    ).first()
+
+    if not participation:
+        raise HTTPException(status_code=404, detail="Ta drużyna nie bierze udziału w tym turnieju")
+
+    # 2. Usuwamy wyniki (performances) graczy tej drużyny z tego turnieju
+    # Najpierw znajdujemy graczy tej drużyny
+    team_players = db.query(models.Player).filter(models.Player.team_id == team_id).all()
+    player_ids = [p.id for p in team_players]
+
+    if player_ids:
+        db.query(models.PlayerTournamentPerformance).filter(
+            models.PlayerTournamentPerformance.tournament_id == tournament_id,
+            models.PlayerTournamentPerformance.player_id.in_(player_ids)
+        ).delete(synchronize_session=False)
+
+    # 3. Usuwamy wpis o udziale drużyny
+    db.delete(participation)
+    db.commit()
+
+    return {"message": "Drużyna została usunięta z turnieju"}
