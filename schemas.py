@@ -178,3 +178,24 @@ class TeamImport(BaseModel):
 
 class ImportData(BaseModel):
     teams: List[TeamImport]
+
+
+# --- CUSTOM RANKING ---
+class CustomRankingParams(BaseModel):
+    # Parametry matematyczne
+    rating_exponent_divisor: float = 1.1  # Np. 1.1 we wzorze 1/1.1
+    rounds_root: float = 3.0  # Np. 3.0 we wzorze rounds^(1/3)
+    base_multiplier: float = 100.0  # Mnożnik ogólny (obecnie 100)
+
+    # Bonusy fazowe
+    bonus_qf: float = 0.1
+    bonus_sf: float = 0.2
+    bonus_final: float = 0.3
+
+    # Wagi faz (opcjonalne nadpisanie domyślnych wag turnieju)
+    # Jeśli ustawione na 0 lub None, używamy wag z bazy danych turnieju
+    override_weights: bool = False
+    weight_group: float = 0.4
+    weight_qf: float = 0.2
+    weight_sf: float = 0.2
+    weight_final: float = 0.2

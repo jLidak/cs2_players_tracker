@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Kreator Rankingu{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>🛠️ Kreator Własnego Rankingu</h2>
+    <p>Zmieniaj parametry poniżej, aby zobaczyć jak zmieni się ranking.</p>
+
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-top: 20px;">
+        
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd;">
+            <h3>Parametry</h3>
+            
+            <div class="control-group">
+                <label>Damping Ratingu (1 / X)</label>
+                <input type="number" id="ratingExp" step="0.1" value="1.1" onchange="updateRanking()">
+                <small>Wyższe = mniejsze znaczenie "wystrzałów" ratingu.</small>
+            </div>
+
+            <div class="control-group">
+                <label>Pierwiastek Rund (Root)</label>
+                <input type="number" id="roundsRoot" step="0.1" value="3.0" onchange="updateRanking()">
+                <small>Wyższe = mniejsze znaczenie liczby rund (3.0 = pierwiastek sześcienny).</small>
+            </div>
+
+            <div class="control-group">
+                <label>Mnożnik Bazowy</label>
+                <input type="number" id="baseMult" step="10" value="100" onchange="updateRanking()">
+            </div>
+
+            <hr>
+            <h4>Bonusy do Ratingu</h4>
+            <div class="control-group">
+                <label>Ćwierćfinał (QF)</label>
+                <input type="number" id="bonusQF" step="0.01" value="0.10" onchange="updateRanking()">
+            </div>
+            <div class="control-group">
+                <label>Półfinał (SF)</label>
+                <input type="number" id="bonusSF" step="0.01" value="0.20" onchange="updateRanking()">
+            </div>
+            <div class="control-group">
+                <label>Finał</label>
+                <input type="number" id="bonusFinal" step="0.01" value="0.30" onchange="updateRanking()">
+            </div>
+
+            <hr>
+            <h4>Wagi Faz (Opcjonalne)</h4>
+            <div style="margin-bottom: 10px;">
+                <input type="checkbox" id="overrideWeights" onchange="updateRanking()">
+                <label for="overrideWeights">Nadpisz wagi turniejów</label>
+            </div>
+            <div id="weightsContainer" style="opacity: 0.5; pointer-events: none;">
+                <div class="control-group"><label>Group</label><input type="number" step="0.05" id="wGroup" value="0.4"></div>
+                <div class="control-group"><label>Quarter</label><input type="number" step="0.05" id="wQF" value="0.2"></div>
+                <div class="control-group"><label>Semi</label><input type="number" step="0.05" id="wSF" value="0.2"></div>
+                <div class="control-group"><label>Final</label><input type="number" step="0.05" id="wFinal" value="0.2"></div>
+            </div>
+
+            <button onclick="updateRanking()" class="btn" style="width: 100%; margin-top: 15px; background: #3498db;">PRZELICZ</button>
+        </div>
+
+        <div>
+            <h3 style="display:flex; justify-content:space-between;">
+                Wyniki
+                <span id="loader" style="display:none; font-size: 0.8em; color: #e67e22;">Liczenie...</span>
+            </h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Gracz</th>
+                        <th>Drużyna</th>
+                        <th>Punkty</th>
+                    </tr>
+                </thead>
+                <tbody id="rankingBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .control-group { margin-bottom: 10px; }
+    .control-group label { display: block; font-weight: bold; font-size: 0.8rem; }
+    .control-group input { width: 100%; padding: 5px; }
+    .control-group small { display: block; color: #7f8c8d; font-size: 0.7rem; margin-top: 2px;}
+</style>
+
+<script>
+    async function updateRanking() {
+        const loader = document.getElementById('loader');
+        const tbody = document.getElementById('rankingBody');
+        const override = document.getElementById('overrideWeights').checked;
+        
+        // UI Logic for weights
+        const wContainer = document.getElementById('weightsContainer');
+        if(override) {
+            wContainer.style.opacity = "1";
+            wContainer.style.pointerEvents = "auto";
+        } else {
+            wContainer.style.opacity = "0.5";
+            wContainer.style.pointerEvents = "none";
+        }
+
+        const payload = {
+            rating_exponent_divisor: parseFloat(document.getElementById('ratingExp').value),
+            rounds_root: parseFloat(document.getElementById('roundsRoot').value),
+            base_multiplier: parseFloat(document.getElementById('baseMult').value),
+            bonus_qf: parseFloat(document.getElementById('bonusQF').value),
+            bonus_sf: parseFloat(document.getElementById('bonusSF').value),
+            bonus_final: parseFloat(document.getElementById('bonusFinal').value),
+            override_weights: override,
+            weight_group: parseFloat(document.getElementById('wGroup').value),
+            weight_qf: parseFloat(document.getElementById('wQF').value),
+            weight_sf: parseFloat(document.getElementById('wSF').value),
+            weight_final: parseFloat(document.getElementById('wFinal').value)
+        };
+
+        loader.style.display = 'inline';
+        
+        try {
+            const response = await fetch('/api/custom-ranking/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            const data = await response.json();
+            
+            tbody.innerHTML = '';
+            let rank = 1;
+            
+            data.forEach(player => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${rank++}</td>
+                    <td style="display:flex; align-items:center; gap:10px;">
+                        ${player.photo_url ? `<img src="${player.photo_url}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">` : ''}
+                        <strong>${player.nickname}</strong>
+                    </td>
+                    <td>${player.team_name}</td>
+                    <td style="font-weight:bold; color: #2c3e50;">${player.total_points}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+        } catch (e) {
+            console.error(e);
+            alert("Błąd obliczeń");
+        } finally {
+            loader.style.display = 'none';
+        }
+    }
+
+    // Załaduj domyślny ranking przy starcie
+    window.onload = updateRanking;
+</script>
+{% endblock %}

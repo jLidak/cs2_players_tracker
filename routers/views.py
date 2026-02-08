@@ -127,3 +127,7 @@ def player_profile(request: Request, player_id: int, db: Session = Depends(get_d
 @router.get("/import-json", response_class=HTMLResponse)
 def import_json_page(request: Request):
     return templates.TemplateResponse("json_import.html", {"request": request})
+
+@router.get("/custom-ranking", response_class=HTMLResponse)
+def custom_ranking_view(request: Request):
+    return templates.TemplateResponse("custom_ranking.html", {"request": request})
