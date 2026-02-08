@@ -34,28 +34,6 @@ def get_ranking(db: Session = Depends(get_db)):
             r_semis = participation.rounds_semis if participation else 0
             r_final = participation.rounds_final if participation else 0
 
-            # Funkcja skalująca rundy (bazowe 27, potem co 9 rund o 40% mniej)
-            def get_scaled_rounds(rounds):
-                if rounds <= 0: return 0
-                base_limit = 27
-                step = 9
-                decay = 0.6
-                remaining = rounds
-                scaled = 0
-                current_multiplier = 1.0
-
-                # Próg bazowy
-                taken = min(remaining, base_limit)
-                scaled += taken * current_multiplier
-                remaining -= taken
-
-                # Progi malejące
-                while remaining > 0:
-                    current_multiplier *= decay
-                    taken = min(remaining, step)
-                    scaled += taken * current_multiplier
-                    remaining -= taken
-                return scaled
 
             def calc_phase_points(rating, weight, phase_rounds, bonus=0.0):
                 if rating is None or rating == 0 or phase_rounds == 0:
@@ -71,12 +49,7 @@ def get_ranking(db: Session = Depends(get_db)):
                 exponent = 1 / 1.1
                 damped_diff = math.copysign(abs(diff) ** exponent, diff)
 
-                # 3. Skalujemy rundy
-                scaled_rounds = get_scaled_rounds(phase_rounds)
-
-                # 4. Formuła końcowa: damped_diff * waga * (rundy / 27)
-                # Mnożnik 10 zostaje, aby przywrócić skalę setkową
-                return damped_diff * 10 * weight  * phase_rounds**(1/3)
+                return damped_diff * 100 * weight  * phase_rounds**(1/3)
 
             tournament_points_sum = 0.0
             starts_in_semis = participation.starts_in_semis if participation else False
