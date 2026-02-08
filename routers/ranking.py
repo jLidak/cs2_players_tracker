@@ -57,14 +57,15 @@ def get_ranking(db: Session = Depends(get_db)):
             # Obliczenia dla każdej fazy
             tournament_points_sum += calc_phase_points(perf.rating_group, tour.weight_group, r_group)
 
-            if starts_in_semis:
+            if tour.bracket_type == "Bracket 6 teams" and starts_in_semis:
                 semis_w = tour.weight_semis_override if tour.weight_semis_override is not None else (1.0 - tour.weight_group) / 2
                 final_w = tour.weight_final_override if tour.weight_final_override is not None else (1.0 - tour.weight_group) / 2
                 tournament_points_sum += calc_phase_points(perf.rating_semis, semis_w, r_semis, bonus=0.15)
                 tournament_points_sum += calc_phase_points(perf.rating_final, final_w, r_final, bonus=0.15)
+
+                # Logika Standardowa (Bracket 8, Bracket 16, i Bracket 6 bez skipa)
             else:
-                tournament_points_sum += calc_phase_points(perf.rating_quarters, tour.weight_quarters, r_quarters,
-                                                           bonus=0.15)
+                tournament_points_sum += calc_phase_points(perf.rating_quarters, tour.weight_quarters, r_quarters,bonus=0.15)
                 tournament_points_sum += calc_phase_points(perf.rating_semis, tour.weight_semis, r_semis, bonus=0.15)
                 tournament_points_sum += calc_phase_points(perf.rating_final, tour.weight_final, r_final, bonus=0.15)
 
@@ -84,10 +85,6 @@ def get_ranking(db: Session = Depends(get_db)):
 
 @router.post("/api/custom-ranking/", response_model=List[schemas.RankingEntry])
 def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = Depends(get_db)):
-    """
-    Oblicza ranking na podstawie parametrów przesłanych przez użytkownika.
-    Nie zmienia nic w bazie danych.
-    """
     players = db.query(models.Player).options(
         joinedload(models.Player.team),
         joinedload(models.Player.tournament_performances).joinedload(models.PlayerTournamentPerformance.tournament),
@@ -100,23 +97,35 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
 
         for perf in player.tournament_performances:
             tour = perf.tournament
+            tid = tour.id
 
-            # Ustalanie wag faz (z bazy lub nadpisane przez użytkownika)
-            w_group = params.weight_group if params.override_weights else tour.weight_group
-            w_qf = params.weight_qf if params.override_weights else tour.weight_quarters
-            w_sf = params.weight_sf if params.override_weights else tour.weight_semis
-            w_final = params.weight_final if params.override_weights else tour.weight_final
+            # --- USTALANIE WAG ---
+            # Sprawdzamy czy użytkownik przesłał nadpisanie dla TEGO KONKRETNEGO turnieju
+            user_weights = params.tournament_overrides.get(tid)
 
-            # Dla bracket 6 teams
-            w_sf_bracket6 = tour.weight_semis_override if tour.weight_semis_override is not None else (
-                                                                                                                  1.0 - w_group) / 2
-            w_final_bracket6 = tour.weight_final_override if tour.weight_final_override is not None else (
-                                                                                                                     1.0 - w_group) / 2
-            # Jeśli nadpisujemy wagi globalnie, musimy też dostosować bracket 6
-            if params.override_weights:
-                remaining = 1.0 - w_group
-                w_sf_bracket6 = remaining / 2
-                w_final_bracket6 = remaining / 2
+            if user_weights:
+                # Używamy wag od użytkownika
+                w_group = user_weights.weight_group
+                w_qf = user_weights.weight_qf
+                w_sf = user_weights.weight_sf
+                w_final = user_weights.weight_final
+
+                # Dla Bracket 6 (start w semis), jeśli użytkownik nadpisał wagi,
+                # zakładamy, że to co wpisał w polu SF i Final ma być użyte.
+                w_sf_bracket6 = w_sf
+                w_final_bracket6 = w_final
+            else:
+                # Używamy wag z bazy danych (Domyślne)
+                w_group = tour.weight_group
+                w_qf = tour.weight_quarters
+                w_sf = tour.weight_semis
+                w_final = tour.weight_final
+
+                # Logika override z bazy dla Bracket 6
+                w_sf_bracket6 = tour.weight_semis_override if tour.weight_semis_override is not None else (
+                                                                                                                      1.0 - w_group) / 2
+                w_final_bracket6 = tour.weight_final_override if tour.weight_final_override is not None else (
+                                                                                                                         1.0 - w_group) / 2
 
             participation = db.query(models.TournamentTeam).filter(
                 models.TournamentTeam.tournament_id == tour.id,
@@ -128,27 +137,21 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
             r_semis = participation.rounds_semis if participation else 0
             r_final = participation.rounds_final if participation else 0
 
-            # --- DYNAMICZNA FUNKCJA PUNKTACJI ---
             def calc_points(rating, weight, phase_rounds, bonus):
                 if rating is None or rating == 0 or phase_rounds == 0:
                     return 0.0
 
                 effective_rating = rating + bonus
-
-                # 1. Różnica
                 diff = (effective_rating - 1.0) * 100
 
-                # 2. Wykładnik z parametrów (zabezpieczenie przed dzieleniem przez 0)
                 exp_div = params.rating_exponent_divisor if params.rating_exponent_divisor != 0 else 1.0
                 exponent = 1 / exp_div
-
                 damped_diff = math.copysign(abs(diff) ** exponent, diff)
 
-                # 3. Pierwiastek rund z parametrów
+                # Pierwiastek
                 root_val = params.rounds_root if params.rounds_root != 0 else 1.0
                 rounds_factor = phase_rounds ** (1 / root_val)
 
-                # 4. Finalne obliczenie z parametrami
                 return damped_diff * params.base_multiplier * weight * rounds_factor
 
             points_sum = 0.0
@@ -157,7 +160,7 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
             # Grupa
             points_sum += calc_points(perf.rating_group, w_group, r_group, 0.0)
 
-            if starts_in_semis:
+            if tour.bracket_type == "Bracket 6 teams" and starts_in_semis:
                 points_sum += calc_points(perf.rating_semis, w_sf_bracket6, r_semis, params.bonus_sf)
                 points_sum += calc_points(perf.rating_final, w_final_bracket6, r_final, params.bonus_final)
             else:

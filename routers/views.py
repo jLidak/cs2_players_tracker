@@ -128,6 +128,15 @@ def player_profile(request: Request, player_id: int, db: Session = Depends(get_d
 def import_json_page(request: Request):
     return templates.TemplateResponse("json_import.html", {"request": request})
 
+
 @router.get("/custom-ranking", response_class=HTMLResponse)
-def custom_ranking_view(request: Request):
-    return templates.TemplateResponse("custom_ranking.html", {"request": request})
+def custom_ranking_view(request: Request, db: Session = Depends(get_db)):
+    # Pobieramy wszystkie turnieje, aby wyświetlić je w panelu konfiguracji
+    tournaments = db.query(models.Tournament).order_by(models.Tournament.id.desc()).all()
+    # Uwaga: jeśli model Tournament nie ma pola 'date', usuń .order_by(...)
+    # lub użyj .order_by(models.Tournament.id.desc())
+
+    return templates.TemplateResponse("custom_ranking.html", {
+        "request": request,
+        "tournaments": tournaments
+    })

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import date
 
 class TeamBase(BaseModel):
@@ -181,21 +181,24 @@ class ImportData(BaseModel):
 
 
 # --- CUSTOM RANKING ---
+class PhaseWeights(BaseModel):
+    weight_group: float
+    weight_qf: float
+    weight_sf: float
+    weight_final: float
+
+
 class CustomRankingParams(BaseModel):
     # Parametry matematyczne
-    rating_exponent_divisor: float = 1.1  # Np. 1.1 we wzorze 1/1.1
-    rounds_root: float = 3.0  # Np. 3.0 we wzorze rounds^(1/3)
-    base_multiplier: float = 100.0  # Mnożnik ogólny (obecnie 100)
+    rating_exponent_divisor: float = 1.1
+    rounds_root: float = 2.0
+    base_multiplier: float = 15.0
 
     # Bonusy fazowe
     bonus_qf: float = 0.1
     bonus_sf: float = 0.2
     bonus_final: float = 0.3
 
-    # Wagi faz (opcjonalne nadpisanie domyślnych wag turnieju)
-    # Jeśli ustawione na 0 lub None, używamy wag z bazy danych turnieju
-    override_weights: bool = False
-    weight_group: float = 0.4
-    weight_qf: float = 0.2
-    weight_sf: float = 0.2
-    weight_final: float = 0.2
+    # Słownik: ID Turnieju -> Wagi Faz
+    # Jeśli ID turnieju nie ma w tym słowniku, używamy danych z bazy
+    tournament_overrides: Dict[int, PhaseWeights] = {}
