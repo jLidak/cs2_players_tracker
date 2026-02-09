@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Optional
 from datetime import date
 
 class TeamBase(BaseModel):
@@ -214,3 +214,32 @@ class CustomRankingParams(BaseModel):
     # Słownik: ID Turnieju -> Wagi Faz
     # Jeśli ID turnieju nie ma w tym słowniku, używamy danych z bazy
     tournament_overrides: Dict[int, PhaseWeights] = {}
+
+
+# Nowy model dla szczegółów fazy (np. punkty za grupę)
+class PhasePointsDetail(BaseModel):
+    phase_name: str
+    rating: float
+    rounds: int
+    weight: float
+    points: float
+    bonus: float  # Dodajemy informację o bonusie
+
+# Nowy model dla szczegółów turnieju
+class TournamentPointsDetail(BaseModel):
+    tournament_name: str
+    tournament_weight: float
+    phases: List[PhasePointsDetail]
+    total_tournament_points: float
+
+
+# Rozszerzony model RankingEntry
+class RankingEntry(BaseModel):
+    player_id: int
+    nickname: str
+    team_name: Optional[str] = None
+    total_points: float
+    photo_url: Optional[str] = None
+
+    # Lista szczegółów (może być pusta, jeśli nie potrzebujemy detali wszędzie)
+    details: List[TournamentPointsDetail] = []

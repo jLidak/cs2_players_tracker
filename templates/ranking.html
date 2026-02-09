@@ -29,42 +29,118 @@
         <thead>
             <tr>
                 <th style="width: 50px; text-align: center;">#</th>
-                <th style="width: 80px;"></th>
+                <th style="width: 60px;"></th>
                 <th>Gracz</th>
                 <th>Drużyna</th>
                 <th style="text-align: right;">Punkty</th>
+                <th style="width: 100px; text-align: center;">Akcje</th>
             </tr>
         </thead>
         <tbody>
             {% for entry in ranking %}
-            <tr style="cursor: pointer;" onclick="window.location.href='/player/{{ entry.player_id }}'">
+            <tr style="cursor: pointer;" onclick="if(!event.target.closest('button')) window.location.href='/player/{{ entry.player_id }}'">
                 <td style="text-align: center; font-weight: bold; font-size: 1.2rem;">
-                    {% if loop.index == 1 %}
-                    🥇
-                    {% elif loop.index == 2 %}
-                    🥈
-                    {% elif loop.index == 3 %}
-                    🥉
-                    {% else %}
-                    {{ loop.index }}
-                    {% endif %}
+                    {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}
                 </td>
                 <td>
                     {% if entry.photo_url %}
-                    <img src="{{ entry.photo_url }}" alt="{{ entry.nickname }}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                    <img src="{{ entry.photo_url }}" alt="{{ entry.nickname }}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
                     {% else %}
-                    <div style="width: 50px; height: 50px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center;">👤</div>
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center;">👤</div>
                     {% endif %}
                 </td>
                 <td style="font-weight: 600;">{{ entry.nickname }}</td>
                 <td>{{ entry.team_name if entry.team_name else '-' }}</td>
-                <td style="text-align: right; font-weight: bold; color: #667eea; font-size: 1.1em;">{{  entry.total_points }}</td>
+                <td style="text-align: right; font-weight: bold; color: #667eea; font-size: 1.1em;">{{  entry.total_points | int  }}</td>
+                <td style="text-align: center;">
+                    <button class="btn" style="padding: 5px 10px; font-size: 0.8rem; background: #3498db;"
+                            onclick='showDetails({{ entry.model_dump_json() | safe }})'>
+                        Szczegóły
+                    </button>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <p style="color: #999; text-align: center; padding: 2rem;">Brak danych rankingowych dla wybranego filtra.</p>
+    <p style="color: #999; text-align: center; padding: 2rem;">Brak danych rankingowych.</p>
     {% endif %}
 </div>
+
+<div id="detailsModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+    <div style="background: white; padding: 20px; border-radius: 8px; width: 700px; max-width: 95%; max-height: 90vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 id="modalTitle" style="margin: 0;">Szczegóły Punktacji</h2>
+            <button onclick="closeDetailsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+
+        <div id="modalContent"></div>
+    </div>
+</div>
+
+<script>
+    function showDetails(playerData) {
+        const modal = document.getElementById('detailsModal');
+        const content = document.getElementById('modalContent');
+        const title = document.getElementById('modalTitle');
+
+        title.innerText = `Szczegóły: ${playerData.nickname}`;
+        content.innerHTML = ''; // Czyścimy
+
+        if (!playerData.details || playerData.details.length === 0) {
+            content.innerHTML = '<p>Brak szczegółowych danych.</p>';
+            modal.style.display = 'flex';
+            return;
+        }
+
+        let html = '';
+
+        playerData.details.forEach(tour => {
+            html += `
+                <div style="border: 1px solid #eee; border-radius: 5px; padding: 10px; margin-bottom: 10px; background: #fafafa;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 5px;">
+                        <strong>${tour.tournament_name}</strong>
+                        <span style="font-size: 0.9em; color: #555;">Waga Turnieju: <strong>${tour.tournament_weight}</strong> | Suma: <strong style="color: #27ae60;">${tour.total_tournament_points}</strong></span>
+                    </div>
+                    <table style="width: 100%; font-size: 0.9em; border-collapse: collapse;">
+                        <tr style="background: #eee; text-align: left;">
+                            <th style="padding: 4px;">Faza</th>
+                            <th style="padding: 4px;">Rating (w/bonus)</th>
+                            <th style="padding: 4px;">Rundy</th>
+                            <th style="padding: 4px;">Waga Fazy</th>
+                            <th style="padding: 4px; text-align: right;">Punkty</th>
+                        </tr>
+            `;
+
+            tour.phases.forEach(phase => {
+                html += `
+                    <tr>
+                        <td style="padding: 4px; border-bottom: 1px solid #f1f1f1;">${phase.phase_name}</td>
+                        <td style="padding: 4px; border-bottom: 1px solid #f1f1f1;">${phase.rating.toFixed(2)}</td>
+                        <td style="padding: 4px; border-bottom: 1px solid #f1f1f1;">${phase.rounds}</td>
+                        <td style="padding: 4px; border-bottom: 1px solid #f1f1f1;">${phase.weight}</td>
+                        <td style="padding: 4px; border-bottom: 1px solid #f1f1f1; text-align: right; font-weight: bold;">${phase.points}</td>
+                    </tr>
+                `;
+            });
+
+            html += `</table></div>`;
+        });
+
+        content.innerHTML = html;
+        modal.style.display = 'flex';
+    }
+
+    function closeDetailsModal() {
+        document.getElementById('detailsModal').style.display = 'none';
+    }
+
+    // Zamknij modal po kliknięciu poza nim
+    window.onclick = function(event) {
+        const modal = document.getElementById('detailsModal');
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+</script>
 {% endblock %}

@@ -7,10 +7,15 @@ import schemas
 from database import get_db
 
 router = APIRouter(tags=["Ranking"])
+# --- STAŁE DO OBLICZEŃ (Konfiguracja) ---
+RANKING_BASE_MULTIPLIER = 67.0  # Podstawowy mnożnik punktów
+RANKING_ROUNDS_ROOT = 2.66  # Stopień pierwiastka dla rund (np. rounds^(1/2.66))
+RANKING_RATING_EXPONENT_DIV = 1.1  # Dzielnik wykładnika ratingu (np. diff^(1/1.1))
 
 
 @router.get("/api/ranking/", response_model=List[schemas.RankingEntry])
 def get_ranking(db: Session = Depends(get_db), tournament_id: Optional[int] = None):
+    # Pobieramy graczy wraz z potrzebnymi relacjami
     players = db.query(models.Player).options(
         joinedload(models.Player.team),
         joinedload(models.Player.tournament_performances).joinedload(models.PlayerTournamentPerformance.tournament),
@@ -20,84 +25,148 @@ def get_ranking(db: Session = Depends(get_db), tournament_id: Optional[int] = No
 
     for player in players:
         total_points = 0.0
+        player_details = []  # Lista szczegółów dla tego gracza
+        has_participated_in_target_tournament = False  # Flaga czy gracz grał w wybranym turnieju
 
         for perf in player.tournament_performances:
-
-            if tournament_id is not None and perf.tournament_id != tournament_id:
-                continue
+            # 1. Filtrowanie po ID turnieju (jeśli podano)
+            if tournament_id is not None:
+                if perf.tournament_id != tournament_id:
+                    continue  # Pomijamy inne turnieje
+                else:
+                    has_participated_in_target_tournament = True
 
             tour = perf.tournament
 
+            # Pobieramy dane o rundach (participation)
             participation = db.query(models.TournamentTeam).filter(
                 models.TournamentTeam.tournament_id == tour.id,
                 models.TournamentTeam.team_id == player.team_id
             ).first()
 
+            # Jeśli nie znaleziono participation (np. błąd danych), przyjmujemy 0 rund
             r_group = participation.rounds_group if participation else 0
             r_quarters = participation.rounds_quarters if participation else 0
             r_semis = participation.rounds_semis if participation else 0
             r_final = participation.rounds_final if participation else 0
-            r_third = participation.rounds_third_place if participation else 0  # Pobieramy rundy 3rd
+            r_third = participation.rounds_third_place if participation else 0
+            starts_in_semis = participation.starts_in_semis if participation else False
 
-            def calc_phase_points(rating, weight, phase_rounds, bonus=0.0):
+            # Lista faz dla obecnego turnieju
+            current_tour_phases = []
+            tournament_points_sum = 0.0
+
+            # Funkcja wewnętrzna licząca punkty i zapisująca szczegóły
+            def process_phase(phase_name, rating, weight, phase_rounds, bonus=0.0):
+                # Zabezpieczenie: jeśli brak ratingu lub rund, punkty = 0
                 if rating is None or rating == 0 or phase_rounds == 0:
+                    current_tour_phases.append({
+                        "phase_name": phase_name,
+                        "rating": rating if rating else 0.0,
+                        "rounds": phase_rounds,
+                        "weight": weight,
+                        "points": 0.0,
+                        "bonus": bonus
+                    })
                     return 0.0
 
                 effective_rating = rating + bonus
 
-                # 1. Obliczamy różnicę od 1.0 i zamieniamy na jednostki (np. 1.60 -> 60)
+                # Wzór: różnica ratingu
                 diff = (effective_rating - 1.0) * 100
 
-                # 2. Pierwiastkujemy różnicę wykładnikiem 0.90 (Twoje 1.1 stopnia)
-                # Obsługujemy ujemne różnice (rating < 1.0) przez math.copysign
-                exponent = 1 / 1.1
+                # Wzór: Tłumienie ratingu (Damping)
+                exponent = 1 / RANKING_RATING_EXPONENT_DIV
                 damped_diff = math.copysign(abs(diff) ** exponent, diff)
 
-                return damped_diff * 67 * weight  * phase_rounds**(1/2.66)
+                # Wzór: Pierwiastek rund
+                rounds_factor = phase_rounds ** (1 / RANKING_ROUNDS_ROOT)
 
-            tournament_points_sum = 0.0
-            starts_in_semis = participation.starts_in_semis if participation else False
+                # Finalne punkty fazy
+                points = damped_diff * RANKING_BASE_MULTIPLIER * weight * rounds_factor
 
-            # Obliczenia dla każdej fazy
-            tournament_points_sum += calc_phase_points(perf.rating_group, tour.weight_group, r_group)
+                # Dodajemy do szczegółów
+                current_tour_phases.append({
+                    "phase_name": phase_name,
+                    "rating": round(effective_rating, 2),  # Zapisujemy rating z bonusem
+                    "rounds": phase_rounds,
+                    "weight": weight,
+                    "points": round(points, 2),
+                    "bonus": bonus
+                })
 
+                return points
+
+            # --- OBLICZENIA FAZ ---
+
+            # 1. Faza Grupowa
             if tour.bracket_type == "Bracket 6 teams" and starts_in_semis:
-                group_w = tour.weight_group_override if tour.weight_group_override is not None else tour.weight_group
-                remaining_for_playoff = 1.0 - group_w
-                semis_w = tour.weight_semis_override if tour.weight_semis_override is not None else remaining_for_playoff / 2
-                final_w = tour.weight_final_override if tour.weight_final_override is not None else remaining_for_playoff / 2
-
-                tournament_points_sum += calc_phase_points(perf.rating_semis, semis_w, r_semis, bonus=0.15)
-                tournament_points_sum += calc_phase_points(perf.rating_final, final_w, r_final, bonus=0.15)
-
-                # Logika Standardowa (Bracket 8, Bracket 16, i Bracket 6 bez skipa)
+                w_group = tour.weight_group_override if tour.weight_group_override is not None else tour.weight_group
+                tournament_points_sum += process_phase("Group (Override)", perf.rating_group, w_group, r_group)
             else:
-                tournament_points_sum += calc_phase_points(perf.rating_quarters, tour.weight_quarters, r_quarters,bonus=0.15)
-                tournament_points_sum += calc_phase_points(perf.rating_semis, tour.weight_semis, r_semis, bonus=0.15)
-                tournament_points_sum += calc_phase_points(perf.rating_final, tour.weight_final, r_final, bonus=0.15)
+                tournament_points_sum += process_phase("Group Stage", perf.rating_group, tour.weight_group, r_group)
 
+            # 2. Play-offs
+            if tour.bracket_type == "Bracket 6 teams" and starts_in_semis:
+                remaining = 1.0 - (
+                    tour.weight_group_override if tour.weight_group_override is not None else tour.weight_group)
+                w_semi = tour.weight_semis_override if tour.weight_semis_override is not None else remaining / 2
+                w_final = tour.weight_final_override if tour.weight_final_override is not None else remaining / 2
+
+                tournament_points_sum += process_phase("Semi-Final", perf.rating_semis, w_semi, r_semis, bonus=0.15)
+                tournament_points_sum += process_phase("Final", perf.rating_final, w_final, r_final, bonus=0.15)
+            else:
+                tournament_points_sum += process_phase("Quarter-Final", perf.rating_quarters, tour.weight_quarters,
+                                                       r_quarters, bonus=0.15)
+                tournament_points_sum += process_phase("Semi-Final", perf.rating_semis, tour.weight_semis, r_semis,
+                                                       bonus=0.15)
+                tournament_points_sum += process_phase("Final", perf.rating_final, tour.weight_final, r_final,
+                                                       bonus=0.15)
+
+            # 3. Mecz o 3. miejsce
             if tour.has_third_place:
-                tournament_points_sum += calc_phase_points(
-                    perf.rating_third_place,
-                    tour.weight_third_place,
-                    r_third,
-                    bonus=0.15
-                )
+                tournament_points_sum += process_phase("3rd Place", perf.rating_third_place, tour.weight_third_place,
+                                                       r_third, bonus=0.15)
 
-            total_points += max(0.0, tournament_points_sum) * tour.weight
+            # Suma punktów z turnieju przemnożona przez wagę turnieju
+            # Zabezpieczenie: punkty z turnieju nie mogą być ujemne w sumie (chyba że tak chcesz, ale max(0, ...) jest bezpieczniejsze)
+            final_tour_points = max(0.0, tournament_points_sum) * tour.weight
+            total_points += final_tour_points
 
-        if tournament_id is None or total_points > 0:
-            ranking.append({
-                "player_id": player.id,
-                "nickname": player.nickname,
-                "team_name": player.team.name if player.team else "No Team",
-                "total_points": round(total_points),
-                "photo_url": player.photo_url
+            # Dodajemy szczegóły turnieju do listy szczegółów gracza
+            player_details.append({
+                "tournament_name": tour.name,
+                "tournament_weight": tour.weight,
+                "phases": current_tour_phases,
+                "total_tournament_points": round(final_tour_points, 2)
             })
 
-    ranking.sort(key=lambda x: x["total_points"], reverse=True)
-    return ranking
+        # --- DECYZJA O DODANIU DO RANKINGU ---
+        should_add = False
 
+        # Przypadek 1: Ranking ogólny (tournament_id is None) -> Dodajemy jeśli ma > 0 punktów
+        if tournament_id is None:
+            if total_points > 0:
+                should_add = True
+
+        # Przypadek 2: Ranking konkretnego turnieju -> Dodajemy jeśli brał udział (nawet jak ma 0 pkt, np. słaby rating)
+        else:
+            if has_participated_in_target_tournament:
+                should_add = True
+        final_points_int = int(round(total_points))
+        if should_add:
+            ranking.append(schemas.RankingEntry(
+                player_id=player.id,
+                nickname=player.nickname,
+                team_name=player.team.name if player.team else "No Team",
+                total_points=final_points_int,  # Tutaj jest teraz INT
+                photo_url=player.photo_url,
+                details=player_details  # Przekazujemy szczegóły
+            ))
+
+    # Sortowanie
+    ranking.sort(key=lambda x: x.total_points, reverse=True)
+    return ranking
 
 @router.post("/api/custom-ranking/", response_model=List[schemas.RankingEntry])
 def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = Depends(get_db)):
