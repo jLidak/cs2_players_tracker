@@ -53,7 +53,7 @@ def get_ranking(db: Session = Depends(get_db), tournament_id: Optional[int] = No
                 exponent = 1 / 1.1
                 damped_diff = math.copysign(abs(diff) ** exponent, diff)
 
-                return damped_diff * 100 * weight  * phase_rounds**(1/3)
+                return damped_diff * 67 * weight  * phase_rounds**(1/2.66)
 
             tournament_points_sum = 0.0
             starts_in_semis = participation.starts_in_semis if participation else False

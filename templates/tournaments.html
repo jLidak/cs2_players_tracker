@@ -26,7 +26,7 @@
 
                      <div id="createThirdPlaceWeight" style="display:none; margin-top: 5px;">
                          <label>Waga meczu o 3. miejsce (nie wlicza się do sumy 1.0):</label>
-                         <input type="number" step="0.01" name="weight_third_place" placeholder="0.10" value="0.10">
+                         <input type="number" step="0.01" name="weight_third_place" placeholder="0.10" value="0.10" style="width: 100%;">
                      </div>
                 </div>
             </div>
@@ -40,24 +40,24 @@
             </div>
 
             <div id="createSpecialWeights" style="display: none; background: #e8f6f3; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
-            <p style="font-size: 0.8rem; margin: 0 0 5px 0; font-weight: bold; color: #16a085;">
-                Wagi dla drużyn startujących w półfinale (Suma musi = 1.0):
-            </p>
-            <div style="display: flex; gap: 10px;">
-                <div style="flex: 1;">
-                    <label style="font-size: 0.75rem;">Group (Override)</label>
-                    <input type="number" step="0.01" name="weight_group_override" placeholder="np. 0.4" style="width: 100%;">
-                </div>
-                <div style="flex: 1;">
-                    <label style="font-size: 0.75rem;">Semis (Override)</label>
-                    <input type="number" step="0.01" name="weight_semis_override" placeholder="np. 0.3" style="width: 100%;">
-                </div>
-                <div style="flex: 1;">
-                    <label style="font-size: 0.75rem;">Final (Override)</label>
-                    <input type="number" step="0.01" name="weight_final_override" placeholder="np. 0.3" style="width: 100%;">
+                <p style="font-size: 0.8rem; margin: 0 0 5px 0; font-weight: bold; color: #16a085;">
+                    Wagi dla drużyn startujących w półfinale (Suma musi = 1.0):
+                </p>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label style="font-size: 0.75rem;">Group (Override)</label>
+                        <input type="number" step="0.01" name="weight_group_override" placeholder="np. 0.4" style="width: 100%;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-size: 0.75rem;">Semis (Override)</label>
+                        <input type="number" step="0.01" name="weight_semis_override" placeholder="np. 0.3" style="width: 100%;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-size: 0.75rem;">Final (Override)</label>
+                        <input type="number" step="0.01" name="weight_final_override" placeholder="np. 0.3" style="width: 100%;">
+                    </div>
                 </div>
             </div>
-        </div>
             <button type="submit" class="btn" style="margin-top: 15px; width: 100%;">Dodaj Turniej</button>
         </form>
     </div>
@@ -94,8 +94,11 @@
                         weight_quarters: {{ t.weight_quarters }},
                         weight_semis: {{ t.weight_semis }},
                         weight_final: {{ t.weight_final }},
+                        weight_group_override: {{ t.weight_group_override or "null" }},
                         weight_semis_override: {{ t.weight_semis_override or "null" }},
-                        weight_final_override: {{ t.weight_final_override or "null" }}
+                        weight_final_override: {{ t.weight_final_override or "null" }},
+                        has_third_place: {{ t.has_third_place|lower }},
+                        weight_third_place: {{ t.weight_third_place }}
                     })' class="btn" style="padding: 5px 10px; background: #f39c12;">Edytuj</button>
                     <button onclick="deleteTournament({{ t.id }})" class="btn" style="padding: 5px 10px; background: #c0392b;">Usuń</button>
                 </td>
@@ -105,15 +108,17 @@
     </table>
 </div>
 
-<div id="editModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
-    <div style="background: white; padding: 20px; border-radius: 8px; width: 600px; max-width: 90%;">
+<div id="editModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+    <div style="background: white; padding: 20px; border-radius: 8px; width: 600px; max-width: 90%; max-height: 90vh; overflow-y: auto;">
         <h2>Edytuj Turniej</h2>
         <form id="editForm" onsubmit="submitEdit(event)">
             <input type="hidden" name="id" id="editId">
+
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                 <div><label>Nazwa:</label><input type="text" name="name" id="editName" style="width: 100%;"></div>
                 <div><label>Waga (Mnożnik):</label><input type="number" step="0.01" name="weight" id="editWeight" style="width: 100%;"></div>
             </div>
+
             <div style="margin-bottom: 10px;">
                 <label>Typ:</label>
                 <select name="bracket_type" id="editBracketType" onchange="toggleSpecialWeights('edit')" style="width: 100%;">
@@ -122,6 +127,17 @@
                     <option value="Bracket 16 teams">Bracket 16 teams</option>
                 </select>
             </div>
+
+            <div style="margin-bottom: 10px; border: 1px solid #eee; padding: 10px; border-radius: 5px;">
+                 <input type="checkbox" id="editHasThirdPlace" onchange="toggleThirdPlace('edit')">
+                 <label for="editHasThirdPlace" style="font-weight: bold;">Mecz o 3. miejsce</label>
+
+                 <div id="editThirdPlaceWeight" style="display:none; margin-top: 5px;">
+                     <label>Waga (nie wlicza się do sumy 1.0):</label>
+                     <input type="number" step="0.01" name="weight_third_place" id="editWeightThirdPlace" style="width: 100%;">
+                 </div>
+            </div>
+
             <h4>Wagi Faz (Suma musi wynosić 1.0)</h4>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 5px; margin-bottom: 10px;">
                 <div><label>Grp:</label><input type="number" step="0.01" name="weight_group" id="editWeightGroup" style="width: 100%;"></div>
@@ -129,13 +145,16 @@
                 <div><label>SF:</label><input type="number" step="0.01" name="weight_semis" id="editWeightSemis" style="width: 100%;"></div>
                 <div><label>Final:</label><input type="number" step="0.01" name="weight_final" id="editWeightFinal" style="width: 100%;"></div>
             </div>
+
             <div id="editSpecialWeights" style="display: none; background: #e8f6f3; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
-                <h4>Wagi Override</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <h4>Wagi Override (Dla Bracket 6)</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                    <div><label>Group Override:</label><input type="number" step="0.01" name="weight_group_override" id="editOverrideGroup" style="width: 100%;"></div>
                     <div><label>SF Override:</label><input type="number" step="0.01" name="weight_semis_override" id="editOverrideSF" style="width: 100%;"></div>
                     <div><label>Final Override:</label><input type="number" step="0.01" name="weight_final_override" id="editOverrideFinal" style="width: 100%;"></div>
                 </div>
             </div>
+
             <div style="text-align: right;">
                 <button type="button" class="btn" style="background: #7f8c8d;" onclick="closeEditModal()">Anuluj</button>
                 <button type="submit" class="btn" style="background: #27ae60;">Zapisz Zmiany</button>
@@ -153,6 +172,7 @@
         const type = document.getElementById(selectId).value;
         document.getElementById(divId).style.display = (type === "Bracket 6 teams") ? "block" : "none";
     }
+
     function toggleThirdPlace(prefix) {
         const check = document.getElementById(prefix + 'HasThirdPlace');
         const div = document.getElementById(prefix + 'ThirdPlaceWeight');
@@ -168,7 +188,6 @@
         event.preventDefault();
         const form = event.target;
 
-        // Pobieranie wartości standardowych
         const data = {
             name: form.name.value,
             bracket_type: form.bracket_type.value,
@@ -181,7 +200,6 @@
             weight_third_place: form.createHasThirdPlace.checked ? parseFloat(form.weight_third_place.value) : 0.0
         };
 
-        // Pobieranie wartości override, jeśli Bracket 6
         if (data.bracket_type === "Bracket 6 teams") {
             const wgo = form.weight_group_override.value;
             const wso = form.weight_semis_override.value;
@@ -216,7 +234,7 @@
         const id = document.getElementById('editId').value;
         const formData = new FormData(event.target);
 
-        // Frontend Validation
+        // Validation - Standard Weights
         const wG = parseFloat(formData.get("weight_group") || 0);
         const wQ = parseFloat(formData.get("weight_quarters") || 0);
         const wS = parseFloat(formData.get("weight_semis") || 0);
@@ -224,9 +242,13 @@
         const sum = wG + wQ + wS + wF;
 
         if (Math.abs(sum - 1.0) > 0.01) {
-            alert("BŁĄD: Suma wag faz musi wynosić 1.0! Obecnie wynosi: " + sum.toFixed(2));
+            alert("BŁĄD: Suma wag faz standardowych musi wynosić 1.0! Obecnie wynosi: " + sum.toFixed(2));
             return;
         }
+
+        // 3rd place logic
+        const has3rd = document.getElementById('editHasThirdPlace').checked;
+        const weight3rd = has3rd ? parseFloat(document.getElementById('editWeightThirdPlace').value || 0) : 0.0;
 
         const data = {
             name: formData.get("name"),
@@ -236,8 +258,11 @@
             weight_quarters: wQ,
             weight_semis: wS,
             weight_final: wF,
+            weight_group_override: getFloat(formData, "weight_group_override"),
             weight_semis_override: getFloat(formData, "weight_semis_override"),
-            weight_final_override: getFloat(formData, "weight_final_override")
+            weight_final_override: getFloat(formData, "weight_final_override"),
+            has_third_place: has3rd,
+            weight_third_place: weight3rd
         };
         await sendRequest(`/api/tournaments/${id}`, "PUT", data);
     }
@@ -275,11 +300,22 @@
         document.getElementById('editWeightQuarters').value = t.weight_quarters;
         document.getElementById('editWeightSemis').value = t.weight_semis;
         document.getElementById('editWeightFinal').value = t.weight_final;
+
+        // Override weights
+        document.getElementById('editOverrideGroup').value = t.weight_group_override;
         document.getElementById('editOverrideSF').value = t.weight_semis_override;
         document.getElementById('editOverrideFinal').value = t.weight_final_override;
+
+        // 3rd place
+        const has3rd = t.has_third_place;
+        document.getElementById('editHasThirdPlace').checked = has3rd;
+        document.getElementById('editWeightThirdPlace').value = t.weight_third_place;
+        toggleThirdPlace('edit');
+
         toggleSpecialWeights('edit');
         document.getElementById('editModal').style.display = 'flex';
     }
+
     function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
 </script>
 {% endblock %}

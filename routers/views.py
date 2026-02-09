@@ -10,7 +10,6 @@ from typing import Optional # <--- WAŻNY IMPORT
 import models
 import schemas
 from database import get_db
-from routers.ranking import get_ranking
 from routers.ranking import get_ranking # Importujemy logikę
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory="templates")
@@ -33,13 +32,13 @@ def index(request: Request, db: Session = Depends(get_db)):
     })
 
 
-@router.get("/ranking", response_class=HTMLResponse)
-def ranking_page(request: Request, db: Session = Depends(get_db)):
-    ranking_data = get_ranking(db)
-    return templates.TemplateResponse("ranking.html", {
-        "request": request,
-        "ranking": ranking_data
-    })
+# @router.get("/ranking", response_class=HTMLResponse)
+# def ranking_page(request: Request, db: Session = Depends(get_db)):
+#     ranking_data = get_ranking(db)
+#     return templates.TemplateResponse("ranking.html", {
+#         "request": request,
+#         "ranking": ranking_data
+#     })
 
 
 @router.get("/tournaments", response_class=HTMLResponse)
@@ -144,18 +143,31 @@ def custom_ranking_view(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/ranking", response_class=HTMLResponse)
-def ranking_view(request: Request, tournament_id: Optional[int] = None, db: Session = Depends(get_db)):
-    # ZMIANA: tournament_id: int -> tournament_id: Optional[int]
+def ranking_view(request: Request, tournament_id: Optional[str] = None, db: Session = Depends(get_db)):
+    """
+    Widok rankingu z obsługą pustego parametru z formularza HTML.
+    Zmieniono typ tournament_id z int na str, aby obsłużyć "?tournament_id="
+    """
 
-    # 1. Pobieramy listę turniejów do filtra
+    # 1. Konwersja pustego stringa na None (naprawa błędu formularza)
+    if tournament_id == "":
+        tid_int = None
+    else:
+        try:
+            tid_int = int(tournament_id) if tournament_id is not None else None
+        except ValueError:
+            # Zabezpieczenie gdyby ktoś wpisał w URL np. ?tournament_id=abc
+            tid_int = None
+
+    # 2. Pobieramy listę turniejów do filtra
     tournaments = db.query(models.Tournament).order_by(models.Tournament.id.desc()).all()
 
-    # 2. Obliczamy ranking (z filtrem lub bez)
-    ranking_data = get_ranking(db=db, tournament_id=tournament_id)
+    # 3. Obliczamy ranking (przekazujemy już poprawny int lub None)
+    ranking_data = get_ranking(db=db, tournament_id=tid_int)
 
     return templates.TemplateResponse("ranking.html", {
         "request": request,
         "ranking": ranking_data,
         "tournaments": tournaments,
-        "selected_tournament_id": tournament_id
+        "selected_tournament_id": tid_int  # Przekazujemy przetworzone ID
     })

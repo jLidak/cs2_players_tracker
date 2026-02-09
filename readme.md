@@ -23,11 +23,7 @@ Upewnij się, że masz zainstalowanego Pythona. Następnie wykonaj w terminalu:
 python -m venv venv
 
 # Aktywacja środowiska 
-#   a) Windows
 .\venv\Scripts\activate
-
-#   b) (Linux/macOS)
-source venv/bin/
 
 # Instalacja zależności
 pip install -r requirements.txt
