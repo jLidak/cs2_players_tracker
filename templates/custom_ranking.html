@@ -18,23 +18,24 @@
 
                 <div class="control-group">
                     <label>Damping Ratingu (1/X)</label>
-                    <input type="number" id="ratingExp" step="0.1" value="1.1">
+                    <input type="number" id="ratingExp" step="0.1" value="1.1" onchange="updateRanking()">
                 </div>
                 <div class="control-group">
                     <label>Pierwiastek Rund</label>
-                    <input type="number" id="roundsRoot" step="0.1" value="3.0">
+                    <input type="number" id="roundsRoot" step="0.1" value="2.0" onchange="updateRanking()">
                 </div>
                 <div class="control-group">
                     <label>Mnożnik Bazowy</label>
-                    <input type="number" id="baseMult" step="1" value="100">
+                    <input type="number" id="baseMult" step="1" value="15" onchange="updateRanking()">
                 </div>
 
                 <hr style="margin: 8px 0;">
                 <label style="font-weight:bold; font-size: 0.8em;">Bonusy fazowe:</label>
-                <div style="display: flex; gap: 5px; margin-top: 5px;">
-                    <div><label style="font-size:0.7em;">QF</label><input type="number" id="bonusQF" step="0.05" value="0.15" style="width: 100%;"></div>
-                    <div><label style="font-size:0.7em;">SF</label><input type="number" id="bonusSF" step="0.05" value="0.15" style="width: 100%;"></div>
-                    <div><label style="font-size:0.7em;">Final</label><input type="number" id="bonusFinal" step="0.05" value="0.15" style="width: 100%;"></div>
+                <div style="display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap;">
+                    <div style="flex: 1;"><label style="font-size:0.7em;">QF</label><input type="number" id="bonusQF" step="0.05" value="0.10" style="width: 100%;" onchange="updateRanking()"></div>
+                    <div style="flex: 1;"><label style="font-size:0.7em;">SF</label><input type="number" id="bonusSF" step="0.05" value="0.20" style="width: 100%;" onchange="updateRanking()"></div>
+                    <div style="flex: 1;"><label style="font-size:0.7em;">Final</label><input type="number" id="bonusFinal" step="0.05" value="0.30" style="width: 100%;" onchange="updateRanking()"></div>
+                    <div style="flex: 1;"><label style="font-size:0.7em; color: #d35400;">3rd</label><input type="number" id="bonus3rd" step="0.05" value="0.15" style="width: 100%;" onchange="updateRanking()"></div>
                 </div>
             </fieldset>
 
@@ -44,11 +45,16 @@
                 <div class="tournament-box" id="tour-{{ t.id }}" style="background: white; border: 1px solid #eee; padding: 8px; margin-bottom: 10px; border-radius: 5px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <strong style="font-size: 0.9em;">{{ t.name }}</strong>
-                        <div style="font-size: 0.75em; color: #777;">{{ t.bracket_type }}</div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.75em; color: #777;">{{ t.bracket_type }}</div>
+                            {% if t.has_third_place %}
+                            <span style="font-size: 0.65em; background: #e67e22; color: white; padding: 1px 4px; border-radius: 3px;">3rd Place</span>
+                            {% endif %}
+                        </div>
                     </div>
 
                     <div style="margin-bottom: 5px;">
-                        <input type="checkbox" id="check-{{ t.id }}" class="override-check" onchange="toggleTourInputs({{ t.id }})">
+                        <input type="checkbox" id="check-{{ t.id }}" class="override-check" onchange="toggleTourInputs({{ t.id }}); updateRanking()">
                         <label for="check-{{ t.id }}" style="font-size: 0.8em; cursor: pointer;">Zmień wagi</label>
                     </div>
 
@@ -56,22 +62,29 @@
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
                             <div>
                                 <label style="font-size: 0.7em; display: block;">Group</label>
-                                <input type="number" class="w-group" step="0.01" value="{{ t.weight_group }}">
+                                <input type="number" class="w-group" step="0.01" value="{{ t.weight_group }}" onchange="updateRanking()">
                             </div>
                             <div>
                                 <label style="font-size: 0.7em; display: block;">QF</label>
-                                <input type="number" class="w-qf" step="0.01" value="{{ t.weight_quarters }}">
+                                <input type="number" class="w-qf" step="0.01" value="{{ t.weight_quarters }}" onchange="updateRanking()">
                             </div>
                             <div>
                                 <label style="font-size: 0.7em; display: block;">SF</label>
                                 <input type="number" class="w-sf" step="0.01"
-                                       value="{% if t.weight_semis_override is not none %}{{ t.weight_semis_override }}{% else %}{{ t.weight_semis }}{% endif %}">
+                                       value="{% if t.weight_semis_override is not none %}{{ t.weight_semis_override }}{% else %}{{ t.weight_semis }}{% endif %}" onchange="updateRanking()">
                             </div>
                             <div>
                                 <label style="font-size: 0.7em; display: block;">Final</label>
                                 <input type="number" class="w-final" step="0.01"
-                                       value="{% if t.weight_final_override is not none %}{{ t.weight_final_override }}{% else %}{{ t.weight_final }}{% endif %}">
+                                       value="{% if t.weight_final_override is not none %}{{ t.weight_final_override }}{% else %}{{ t.weight_final }}{% endif %}" onchange="updateRanking()">
                             </div>
+
+                            {% if t.has_third_place %}
+                            <div style="grid-column: span 2;">
+                                <label style="font-size: 0.7em; display: block; color: #d35400;">3rd Place</label>
+                                <input type="number" class="w-3rd" step="0.01" value="{{ t.weight_third_place }}" onchange="updateRanking()">
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -145,11 +158,16 @@
             const isChecked = document.getElementById(`check-${tourId}`).checked;
 
             if (isChecked) {
+                // Sprawdzamy czy istnieje pole dla 3. miejsca (tylko dla turniejów które je mają)
+                const w3rdInput = box.querySelector('.w-3rd');
+                const w3rdVal = w3rdInput ? parseFloat(w3rdInput.value) : 0.0;
+
                 overrides[tourId] = {
                     weight_group: parseFloat(box.querySelector('.w-group').value) || 0,
                     weight_qf: parseFloat(box.querySelector('.w-qf').value) || 0,
                     weight_sf: parseFloat(box.querySelector('.w-sf').value) || 0,
-                    weight_final: parseFloat(box.querySelector('.w-final').value) || 0
+                    weight_final: parseFloat(box.querySelector('.w-final').value) || 0,
+                    weight_third_place: w3rdVal
                 };
             }
         });
@@ -158,9 +176,11 @@
             rating_exponent_divisor: getVal('ratingExp'),
             rounds_root: getVal('roundsRoot'),
             base_multiplier: getVal('baseMult'),
+
             bonus_qf: getVal('bonusQF'),
             bonus_sf: getVal('bonusSF'),
             bonus_final: getVal('bonusFinal'),
+            bonus_third_place: getVal('bonus3rd'), // Dodane
 
             tournament_overrides: overrides
         };

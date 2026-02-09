@@ -20,6 +20,15 @@
                         <option value="Bracket 16 teams">Bracket 16 teams</option>
                     </select>
                 </div>
+                <div style="margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px;">
+                     <input type="checkbox" id="createHasThirdPlace" onchange="toggleThirdPlace('create')">
+                     <label for="createHasThirdPlace">Turniej ma mecz o 3. miejsce?</label>
+
+                     <div id="createThirdPlaceWeight" style="display:none; margin-top: 5px;">
+                         <label>Waga meczu o 3. miejsce (nie wlicza się do sumy 1.0):</label>
+                         <input type="number" step="0.01" name="weight_third_place" placeholder="0.10" value="0.10">
+                     </div>
+                </div>
             </div>
 
             <h4 style="margin-top: 15px;">Wagi Faz (Suma musi wynosić 1.0)</h4>
@@ -30,13 +39,25 @@
                 <div><label>Finał:</label><input type="number" step="0.01" name="weight_final" value="0.20" style="width: 100%;"></div>
             </div>
 
-            <div id="createSpecialWeights" style="display: none; margin-top: 15px; background: #e8f6f3; padding: 10px; border-radius: 5px;">
-                <h4 style="color: #16a085;">Wagi Specjalne (Override)</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div><label>SF Override:</label><input type="number" step="0.01" name="weight_semis_override" placeholder="np. 0.30" style="width: 100%;"></div>
-                    <div><label>Final Override:</label><input type="number" step="0.01" name="weight_final_override" placeholder="np. 0.30" style="width: 100%;"></div>
+            <div id="createSpecialWeights" style="display: none; background: #e8f6f3; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+            <p style="font-size: 0.8rem; margin: 0 0 5px 0; font-weight: bold; color: #16a085;">
+                Wagi dla drużyn startujących w półfinale (Suma musi = 1.0):
+            </p>
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label style="font-size: 0.75rem;">Group (Override)</label>
+                    <input type="number" step="0.01" name="weight_group_override" placeholder="np. 0.4" style="width: 100%;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size: 0.75rem;">Semis (Override)</label>
+                    <input type="number" step="0.01" name="weight_semis_override" placeholder="np. 0.3" style="width: 100%;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size: 0.75rem;">Final (Override)</label>
+                    <input type="number" step="0.01" name="weight_final_override" placeholder="np. 0.3" style="width: 100%;">
                 </div>
             </div>
+        </div>
             <button type="submit" class="btn" style="margin-top: 15px; width: 100%;">Dodaj Turniej</button>
         </form>
     </div>
@@ -132,6 +153,11 @@
         const type = document.getElementById(selectId).value;
         document.getElementById(divId).style.display = (type === "Bracket 6 teams") ? "block" : "none";
     }
+    function toggleThirdPlace(prefix) {
+        const check = document.getElementById(prefix + 'HasThirdPlace');
+        const div = document.getElementById(prefix + 'ThirdPlaceWeight');
+        div.style.display = check.checked ? 'block' : 'none';
+    }
 
     const getFloat = (formData, name) => {
         const val = formData.get(name);
@@ -140,32 +166,49 @@
 
     async function createTournament(event) {
         event.preventDefault();
-        const formData = new FormData(event.target);
+        const form = event.target;
 
-        // Frontend Validation
-        const wG = parseFloat(formData.get("weight_group") || 0);
-        const wQ = parseFloat(formData.get("weight_quarters") || 0);
-        const wS = parseFloat(formData.get("weight_semis") || 0);
-        const wF = parseFloat(formData.get("weight_final") || 0);
-        const sum = wG + wQ + wS + wF;
+        // Pobieranie wartości standardowych
+        const data = {
+            name: form.name.value,
+            bracket_type: form.bracket_type.value,
+            weight: parseFloat(form.weight.value),
+            weight_group: parseFloat(form.weight_group.value),
+            weight_quarters: parseFloat(form.weight_quarters.value),
+            weight_semis: parseFloat(form.weight_semis.value),
+            weight_final: parseFloat(form.weight_final.value),
+            has_third_place: form.createHasThirdPlace.checked,
+            weight_third_place: form.createHasThirdPlace.checked ? parseFloat(form.weight_third_place.value) : 0.0
+        };
 
-        if (Math.abs(sum - 1.0) > 0.01) {
-            alert("BŁĄD: Suma wag faz musi wynosić 1.0! Obecnie wynosi: " + sum.toFixed(2));
-            return;
+        // Pobieranie wartości override, jeśli Bracket 6
+        if (data.bracket_type === "Bracket 6 teams") {
+            const wgo = form.weight_group_override.value;
+            const wso = form.weight_semis_override.value;
+            const wfo = form.weight_final_override.value;
+
+            if (wgo) data.weight_group_override = parseFloat(wgo);
+            if (wso) data.weight_semis_override = parseFloat(wso);
+            if (wfo) data.weight_final_override = parseFloat(wfo);
         }
 
-        const data = {
-            name: formData.get("name"),
-            weight: getFloat(formData, "weight") || 1.0,
-            bracket_type: formData.get("bracket_type"),
-            weight_group: wG,
-            weight_quarters: wQ,
-            weight_semis: wS,
-            weight_final: wF,
-            weight_semis_override: getFloat(formData, "weight_semis_override"),
-            weight_final_override: getFloat(formData, "weight_final_override")
-        };
-        await sendRequest("/api/tournaments/", "POST", data);
+        try {
+            const response = await fetch("/api/tournaments/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const err = await response.json();
+                alert("Błąd: " + (err.detail || "Nie udało się utworzyć turnieju"));
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Błąd sieci");
+        }
     }
 
     async function submitEdit(event) {

@@ -17,7 +17,7 @@ def get_tournaments(db: Session = Depends(get_db)):
 
 @router.post("/api/tournaments/", response_model=schemas.Tournament)
 def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depends(get_db)):
-    # WALIDACJA WAG: Muszą sumować się do 1.0
+    # 1. Walidacja standardowej ścieżki
     total_phase_weight = (
             tournament.weight_group +
             tournament.weight_quarters +
@@ -25,17 +25,38 @@ def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depend
             tournament.weight_final
     )
 
-    if abs(total_phase_weight - 1.0) > 0.001:  # Tolerancja dla float
+    if abs(total_phase_weight - 1.0) > 0.001:
         raise HTTPException(
             status_code=400,
-            detail=f"Suma wag faz musi wynosić 1.0. Obecnie wynosi: {total_phase_weight}"
+            detail=f"Suma standardowych wag (Group+QF+SF+Final) musi wynosić 1.0. Obecnie: {total_phase_weight}"
         )
+
+    # 2. Walidacja ścieżki skróconej (tylko dla Bracket 6)
+    if tournament.bracket_type == "Bracket 6 teams":
+        # Jeśli użytkownik nie podał override'ów, możemy je tu opcjonalnie wyliczyć automatycznie,
+        # albo wymagać ich podania. Tutaj zakładam, że jeśli są podane (nie None), to muszą się sumować.
+        # Jeśli są None, backend może je uzupełnić lub zostawić puste (zależy od logiki biznesowej).
+        # Przyjmijmy wersję: Jeśli podano którekolwiek override, sprawdzamy sumę tych trzech.
+
+        wg = tournament.weight_group_override if tournament.weight_group_override is not None else 0.0
+        ws = tournament.weight_semis_override if tournament.weight_semis_override is not None else 0.0
+        wf = tournament.weight_final_override if tournament.weight_final_override is not None else 0.0
+
+        # Sprawdzamy tylko, jeśli użytkownik wpisał cokolwiek w override'ach
+        if wg > 0 or ws > 0 or wf > 0:
+            total_override = wg + ws + wf
+            if abs(total_override - 1.0) > 0.001:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Suma wag dla ścieżki skróconej (Group Override + SF Override + Final Override) musi wynosić 1.0. Obecnie: {total_override}"
+                )
 
     db_tournament = models.Tournament(**tournament.model_dump())
     db.add(db_tournament)
     db.commit()
     db.refresh(db_tournament)
     return db_tournament
+
 
 
 @router.put("/api/tournaments/{tournament_id}", response_model=schemas.Tournament)
@@ -45,10 +66,9 @@ def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Se
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
 
-    # Sprawdzamy sumę wag, jeśli jakakolwiek waga jest aktualizowana
+    # 1. Walidacja standardowych wag (musi sumować się do 1.0)
     weights_to_check = ['weight_group', 'weight_quarters', 'weight_semis', 'weight_final']
     if any(getattr(data, w) is not None for w in weights_to_check):
-        # Budujemy słownik "nowych" wag (bierzemy z data, a jak None to z bazy)
         proposed_weights = {}
         for w in weights_to_check:
             new_val = getattr(data, w)
@@ -61,7 +81,33 @@ def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Se
                 detail=f"Błąd walidacji: Suma wag faz musi wynosić 1.0. Twoje zmiany dają sumę: {total:.2f}"
             )
 
-    # Aktualizuj pola
+    # 2. Walidacja wag dla ścieżki skróconej (Bracket 6)
+    # Sprawdzamy typ turnieju (nowy z danych lub stary z bazy)
+    effective_bracket_type = data.bracket_type if data.bracket_type is not None else tournament.bracket_type
+
+    if effective_bracket_type == "Bracket 6 teams":
+        # Funkcja pomocnicza do pobierania "efektywnej" wartości wagi (nowa > stara > 0.0)
+        def get_val(attr_name):
+            val = getattr(data, attr_name)
+            if val is not None:
+                return val
+            val = getattr(tournament, attr_name)
+            return val if val is not None else 0.0
+
+        wg = get_val('weight_group_override')
+        ws = get_val('weight_semis_override')
+        wf = get_val('weight_final_override')
+
+        # Jeśli którykolwiek override jest ustawiony (>0), sprawdzamy czy suma to 1.0
+        if wg > 0 or ws > 0 or wf > 0:
+            total_override = wg + ws + wf
+            if abs(total_override - 1.0) > 0.001:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Suma wag dla ścieżki skróconej (Group Override + SF Override + Final Override) musi wynosić 1.0. Obecnie wynosi: {total_override:.2f}"
+                )
+
+    # Aktualizacja pól w bazie
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(tournament, key, value)
@@ -101,6 +147,7 @@ def add_team_to_tournament(
         exists.rounds_quarters = data.rounds_quarters
         exists.rounds_semis = data.rounds_semis
         exists.rounds_final = data.rounds_final
+        exists.rounds_third_place = data.rounds_third_place  # Aktualizacja
     else:
         # Tworzenie nowego wpisu
         new_entry = models.TournamentTeam(
@@ -110,7 +157,8 @@ def add_team_to_tournament(
             rounds_group=data.rounds_group,
             rounds_quarters=data.rounds_quarters,
             rounds_semis=data.rounds_semis,
-            rounds_final=data.rounds_final
+            rounds_final=data.rounds_final,
+            rounds_third_place = data.rounds_third_place  # Nowy
         )
         db.add(new_entry)
 
@@ -133,6 +181,7 @@ def set_player_performance(
         if perf.rating_quarters is not None: existing.rating_quarters = perf.rating_quarters
         if perf.rating_semis is not None: existing.rating_semis = perf.rating_semis
         if perf.rating_final is not None: existing.rating_final = perf.rating_final
+        if perf.rating_third_place is not None: existing.rating_third_place = perf.rating_third_place  # Update
         db.commit()
         db.refresh(existing)
         return existing

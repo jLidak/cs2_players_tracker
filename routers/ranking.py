@@ -33,7 +33,7 @@ def get_ranking(db: Session = Depends(get_db)):
             r_quarters = participation.rounds_quarters if participation else 0
             r_semis = participation.rounds_semis if participation else 0
             r_final = participation.rounds_final if participation else 0
-
+            r_third = participation.rounds_third_place if participation else 0  # Pobieramy rundy 3rd
 
             def calc_phase_points(rating, weight, phase_rounds, bonus=0.0):
                 if rating is None or rating == 0 or phase_rounds == 0:
@@ -58,8 +58,12 @@ def get_ranking(db: Session = Depends(get_db)):
             tournament_points_sum += calc_phase_points(perf.rating_group, tour.weight_group, r_group)
 
             if tour.bracket_type == "Bracket 6 teams" and starts_in_semis:
-                semis_w = tour.weight_semis_override if tour.weight_semis_override is not None else (1.0 - tour.weight_group) / 2
-                final_w = tour.weight_final_override if tour.weight_final_override is not None else (1.0 - tour.weight_group) / 2
+                group_w = tour.weight_group_override if tour.weight_group_override is not None else tour.weight_group
+                remaining_for_playoff = 1.0 - group_w
+                semis_w = tour.weight_semis_override if tour.weight_semis_override is not None else remaining_for_playoff / 2
+                final_w = tour.weight_final_override if tour.weight_final_override is not None else remaining_for_playoff / 2
+
+                tournament_points_sum += calc_phase_points(perf.rating_group, group_w, r_group)
                 tournament_points_sum += calc_phase_points(perf.rating_semis, semis_w, r_semis, bonus=0.15)
                 tournament_points_sum += calc_phase_points(perf.rating_final, final_w, r_final, bonus=0.15)
 
@@ -68,6 +72,14 @@ def get_ranking(db: Session = Depends(get_db)):
                 tournament_points_sum += calc_phase_points(perf.rating_quarters, tour.weight_quarters, r_quarters,bonus=0.15)
                 tournament_points_sum += calc_phase_points(perf.rating_semis, tour.weight_semis, r_semis, bonus=0.15)
                 tournament_points_sum += calc_phase_points(perf.rating_final, tour.weight_final, r_final, bonus=0.15)
+
+            if tour.has_third_place:
+                tournament_points_sum += calc_phase_points(
+                    perf.rating_third_place,
+                    tour.weight_third_place,
+                    r_third,
+                    bonus=0.15
+                )
 
             total_points += max(0.0, tournament_points_sum) * tour.weight
 
@@ -102,6 +114,11 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
             # --- USTALANIE WAG ---
             # Sprawdzamy czy użytkownik przesłał nadpisanie dla TEGO KONKRETNEGO turnieju
             user_weights = params.tournament_overrides.get(tid)
+            w_group = tour.weight_group
+            w_qf = tour.weight_quarters
+            w_sf = tour.weight_semis
+            w_final = tour.weight_final
+            w_3rd = tour.weight_third_place  # Domyślna waga 3rd z bazy
 
             if user_weights:
                 # Używamy wag od użytkownika
@@ -109,6 +126,7 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
                 w_qf = user_weights.weight_qf
                 w_sf = user_weights.weight_sf
                 w_final = user_weights.weight_final
+                w_3rd = user_weights.weight_third_place  # Nadpisana waga 3rd
 
                 # Dla Bracket 6 (start w semis), jeśli użytkownik nadpisał wagi,
                 # zakładamy, że to co wpisał w polu SF i Final ma być użyte.
@@ -122,10 +140,9 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
                 w_final = tour.weight_final
 
                 # Logika override z bazy dla Bracket 6
-                w_sf_bracket6 = tour.weight_semis_override if tour.weight_semis_override is not None else (
-                                                                                                                      1.0 - w_group) / 2
-                w_final_bracket6 = tour.weight_final_override if tour.weight_final_override is not None else (
-                                                                                                                         1.0 - w_group) / 2
+                w_group_ov = tour.weight_group_override if tour.weight_group_override is not None else tour.weight_group
+                w_sf_ov = tour.weight_semis_override if tour.weight_semis_override is not None else (1.0 - w_group) / 2
+                w_final_ov = tour.weight_final_override if tour.weight_final_override is not None else (1.0 - w_group) / 2
 
             participation = db.query(models.TournamentTeam).filter(
                 models.TournamentTeam.tournament_id == tour.id,
@@ -136,6 +153,7 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
             r_quarters = participation.rounds_quarters if participation else 0
             r_semis = participation.rounds_semis if participation else 0
             r_final = participation.rounds_final if participation else 0
+            r_third = participation.rounds_third_place if participation else 0
 
             def calc_points(rating, weight, phase_rounds, bonus):
                 if rating is None or rating == 0 or phase_rounds == 0:
@@ -167,6 +185,15 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
                 points_sum += calc_points(perf.rating_quarters, w_qf, r_quarters, params.bonus_qf)
                 points_sum += calc_points(perf.rating_semis, w_sf, r_semis, params.bonus_sf)
                 points_sum += calc_points(perf.rating_final, w_final, r_final, params.bonus_final)
+
+            # --- Mecz o 3 miejsce ---
+            if tour.has_third_place:
+                points_sum += calc_points(
+                    perf.rating_third_place,
+                    w_3rd,  # Używamy wagi (z bazy lub customowej)
+                    r_third,
+                    params.bonus_third_place
+                )
 
             total_points += max(0.0, points_sum) * tour.weight
 

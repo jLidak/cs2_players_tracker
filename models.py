@@ -41,13 +41,15 @@ class Tournament(Base):
     bracket_type: Mapped[str] = mapped_column(String, default="Bracket 8 teams")
     weight: Mapped[float] = mapped_column(Float, default=1.0)
 
-    # --- ZMIANA NAZEWNICTWA ---
-    weight_group: Mapped[float] = mapped_column(Float, default=0.4)  # Zamiast weight_overall
-    # --------------------------
+    has_third_place: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    weight_third_place: Mapped[float] = mapped_column(Float, default=0.1)
+    weight_group: Mapped[float] = mapped_column(Float, default=0.4)
     weight_quarters: Mapped[float] = mapped_column(Float, default=0.2)
     weight_semis: Mapped[float] = mapped_column(Float, default=0.2)
     weight_final: Mapped[float] = mapped_column(Float, default=0.2)
+
+    weight_group_override: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     weight_semis_override: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     weight_final_override: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
@@ -65,14 +67,15 @@ class TournamentTeam(Base):
     tournament_id: Mapped[int] = mapped_column(Integer, ForeignKey("tournaments.id"), nullable=False)
     team_id: Mapped[int] = mapped_column(Integer, ForeignKey("teams.id"), nullable=False)
     starts_in_semis: Mapped[bool] = mapped_column(Boolean, default=False)
-    tournament: Mapped["Tournament"] = relationship("Tournament", back_populates="participating_teams")
-    team: Mapped["Team"] = relationship("Team", back_populates="tournament_participations")
 
-    # --- NOWE POLA: LICZBA RUND ---
     rounds_group: Mapped[int] = mapped_column(Integer, default=1)
     rounds_quarters: Mapped[int] = mapped_column(Integer, default=1)
     rounds_semis: Mapped[int] = mapped_column(Integer, default=1)
     rounds_final: Mapped[int] = mapped_column(Integer, default=1)
+    rounds_third_place: Mapped[int] = mapped_column(Integer, default=0)
+
+    tournament: Mapped["Tournament"] = relationship("Tournament", back_populates="participating_teams")
+    team: Mapped["Team"] = relationship("Team", back_populates="tournament_participations")
 
 
 class PlayerTournamentPerformance(Base):
@@ -81,13 +84,12 @@ class PlayerTournamentPerformance(Base):
     player_id: Mapped[int] = mapped_column(Integer, ForeignKey("players.id"), nullable=False)
     tournament_id: Mapped[int] = mapped_column(Integer, ForeignKey("tournaments.id"), nullable=False)
 
-    # --- ZMIANA NAZEWNICTWA ---
-    rating_group: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # Zamiast rating_overall
-    # --------------------------
-
+    rating_group: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     rating_quarters: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     rating_semis: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    rating_third_place: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     rating_final: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
     player: Mapped["Player"] = relationship("Player", back_populates="tournament_performances")
     tournament: Mapped["Tournament"] = relationship("Tournament", back_populates="player_performances")
 

@@ -18,6 +18,10 @@
         {% if tournament.weight_semis_override %}<span style="color:#16a085;">({{ tournament.weight_semis_override }})</span>{% endif %} |
         Final: {{ tournament.weight_final }}
         {% if tournament.weight_final_override %}<span style="color:#16a085;">({{ tournament.weight_final_override }})</span>{% endif %}
+
+        {% if tournament.has_third_place %}
+        <br><strong>Mecz o 3. miejsce:</strong> Waga {{ tournament.weight_third_place }}
+        {% endif %}
     </div>
 </div>
 
@@ -42,6 +46,7 @@
                     <label for="semisCheck">Start w półfinale</label>
                 </div>
                 {% endif %}
+
             </form>
         </div>
 
@@ -57,34 +62,43 @@
                 <div style="font-size: 0.75rem; color: green; margin-bottom: 5px;">(Start w Półfinale)</div>
                 {% endif %}
 
-                <form onsubmit="updateTeamStats(event, {{ p.team.id }}, {{ p.starts_in_semis|lower }})" style="display: grid; grid-template-columns: repeat(4, minmax(60px, 1fr)) auto; gap: 5px; align-items: end;">
+                <form onsubmit="updateTeamStats(event, {{ p.team.id }}, {{ p.starts_in_semis|lower }})" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(50px, 1fr)) auto; gap: 5px; align-items: end;">
 
                     <div style="text-align: center;">
                         <label style="font-size: 0.7rem; display:block;">Group</label>
-                        <input type="number" name="rounds_group" value="{{ p.rounds_group }}" min="0" style="width: 100%; min-width: 50px; padding: 3px; text-align: center;">
+                        <input type="number" name="rounds_group" value="{{ p.rounds_group }}" min="0" style="width: 100%; min-width: 40px; padding: 3px; text-align: center;">
                     </div>
 
                     {% if p.starts_in_semis %}
                          <div style="text-align: center; opacity: 0.5;">
                             <label style="font-size: 0.7rem; display:block;">QF</label>
-                            <input type="number" value="0" disabled style="width: 100%; min-width: 50px; padding: 3px; text-align: center; background: #eee;">
+                            <input type="number" value="0" disabled style="width: 100%; min-width: 40px; padding: 3px; text-align: center; background: #eee;">
                         </div>
                     {% else %}
                         <div style="text-align: center;">
                             <label style="font-size: 0.7rem; display:block;">QF</label>
-                            <input type="number" name="rounds_quarters" value="{{ p.rounds_quarters }}" min="0" style="width: 100%; min-width: 50px; padding: 3px; text-align: center;">
+                            <input type="number" name="rounds_quarters" value="{{ p.rounds_quarters }}" min="0" style="width: 100%; min-width: 40px; padding: 3px; text-align: center;">
                         </div>
                     {% endif %}
 
                     <div style="text-align: center;">
                         <label style="font-size: 0.7rem; display:block;">SF</label>
-                        <input type="number" name="rounds_semis" value="{{ p.rounds_semis }}" min="0" style="width: 100%; min-width: 50px; padding: 3px; text-align: center;">
+                        <input type="number" name="rounds_semis" value="{{ p.rounds_semis }}" min="0" style="width: 100%; min-width: 40px; padding: 3px; text-align: center;">
                     </div>
 
                     <div style="text-align: center;">
                         <label style="font-size: 0.7rem; display:block;">Final</label>
-                        <input type="number" name="rounds_final" value="{{ p.rounds_final }}" min="0" style="width: 100%; min-width: 50px; padding: 3px; text-align: center;">
+                        <input type="number" name="rounds_final" value="{{ p.rounds_final }}" min="0" style="width: 100%; min-width: 40px; padding: 3px; text-align: center;">
                     </div>
+
+                    {% if tournament.has_third_place %}
+                    <div style="text-align: center;">
+                        <label style="font-size: 0.7rem; display:block; color: #d35400;">3rd</label>
+                        <input type="number" name="rounds_third_place" value="{{ p.rounds_third_place }}" min="0" style="width: 100%; min-width: 40px; padding: 3px; text-align: center; border: 1px solid #d35400;">
+                    </div>
+                    {% else %}
+                        <input type="hidden" name="rounds_third_place" value="0">
+                    {% endif %}
 
                     <button type="submit" class="btn" style="padding: 4px 8px; font-size: 0.8rem; background-color: #3498db; height: 28px;">Zapisz</button>
                 </form>
@@ -107,6 +121,9 @@
                         <th>Quarter</th>
                         <th>Semi</th>
                         <th>Final</th>
+                        {% if tournament.has_third_place %}
+                        <th style="color: #d35400;">3rd</th>
+                        {% endif %}
                         <th></th>
                     </tr>
                 </thead>
@@ -119,19 +136,23 @@
                         </td>
                         <td style="font-size: 0.8rem;">{{ player.team.name }}</td>
 
-                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_group" value="{{ perf.rating_group if perf and perf.rating_group else '' }}" style="width: 80px; padding: 5px;"></td>
+                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_group" value="{{ perf.rating_group if perf and perf.rating_group else '' }}" style="width: 70px; padding: 5px;"></td>
 
                         <td style="text-align: center;">
                             {% if player.team_id in semis_team_ids %}
                                 <span style="font-size: 0.8rem; color: #ccc; font-style: italic;">Skip</span>
                                 <input type="hidden" class="rating-input" data-field="rating_quarters" value="">
                             {% else %}
-                                <input type="number" step="0.01" class="rating-input" data-field="rating_quarters" value="{{ perf.rating_quarters if perf and perf.rating_quarters else '' }}" style="width: 80px; padding: 5px;">
+                                <input type="number" step="0.01" class="rating-input" data-field="rating_quarters" value="{{ perf.rating_quarters if perf and perf.rating_quarters else '' }}" style="width: 70px; padding: 5px;">
                             {% endif %}
                         </td>
 
-                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_semis" value="{{ perf.rating_semis if perf and perf.rating_semis else '' }}" style="width: 80px; padding: 5px;"></td>
-                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_final" value="{{ perf.rating_final if perf and perf.rating_final else '' }}" style="width: 80px; padding: 5px;"></td>
+                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_semis" value="{{ perf.rating_semis if perf and perf.rating_semis else '' }}" style="width: 70px; padding: 5px;"></td>
+                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_final" value="{{ perf.rating_final if perf and perf.rating_final else '' }}" style="width: 70px; padding: 5px;"></td>
+
+                        {% if tournament.has_third_place %}
+                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_third_place" value="{{ perf.rating_third_place if perf and perf.rating_third_place else '' }}" style="width: 70px; padding: 5px; border-color: #d35400;"></td>
+                        {% endif %}
 
                         <td>
                             <button onclick="saveRating({{ player.id }})" class="btn" style="background: #27ae60; padding: 5px 10px; font-size: 0.8rem;">Zapisz</button>
@@ -160,13 +181,19 @@
             startsInSemis = form.starts_in_semis.checked;
         }
 
+        let rounds3rd = 0;
+        if (form.rounds_third_place) {
+             rounds3rd = parseInt(form.rounds_third_place.value) || 0;
+        }
+
         try {
             const response = await fetch(`/api/tournaments/${TOURNAMENT_ID}/add_team`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     team_id: parseInt(teamId),
-                    starts_in_semis: startsInSemis
+                    starts_in_semis: startsInSemis,
+                    rounds_third_place: rounds3rd
                 })
             });
 
@@ -181,7 +208,7 @@
         }
     }
 
-    // --- NOWE: USUWANIE DRUŻYNY ---
+    // --- USUWANIE DRUŻYNY ---
     async function removeTeam(teamId) {
         if (!confirm("Czy na pewno usunąć tę drużynę z turnieju? Usunie to również wszystkie wpisane wyniki graczy tej drużyny!")) {
             return;
@@ -204,19 +231,23 @@
         }
     }
 
-    // --- ZAPISYWANIE RATINGÓW ---
+    // --- ZAPISYWANIE RATINGÓW (DYNAMICZNE) ---
     async function saveRating(playerId) {
         const row = document.getElementById(`row-${playerId}`);
         const inputs = row.querySelectorAll('.rating-input');
 
         const data = {
             player_id: playerId,
-            tournament_id: TOURNAMENT_ID,
-            rating_group: inputs[0].value ? parseFloat(inputs[0].value) : null,
-            rating_quarters: inputs[1].value ? parseFloat(inputs[1].value) : null,
-            rating_semis: inputs[2].value ? parseFloat(inputs[2].value) : null,
-            rating_final: inputs[3].value ? parseFloat(inputs[3].value) : null
+            tournament_id: TOURNAMENT_ID
         };
+
+        // Dynamicznie zbieramy dane z inputów (dzięki data-field)
+        inputs.forEach(input => {
+            const fieldName = input.getAttribute('data-field');
+            if (fieldName) {
+                data[fieldName] = input.value ? parseFloat(input.value) : null;
+            }
+        });
 
         const btn = row.querySelector('button');
         const originalText = btn.innerText;
@@ -250,7 +281,7 @@
         }
     }
 
-    // --- NOWE: AKTUALIZACJA STATYSTYK DRUŻYNY (RUNDY) ---
+    // --- AKTUALIZACJA STATYSTYK DRUŻYNY (RUNDY) ---
     async function updateTeamStats(event, teamId, startsInSemis) {
         event.preventDefault();
         const form = event.target;
@@ -266,11 +297,11 @@
             rounds_group: parseInt(form.rounds_group.value) || 0,
             rounds_quarters: form.rounds_quarters ? (parseInt(form.rounds_quarters.value) || 0) : 0,
             rounds_semis: parseInt(form.rounds_semis.value) || 0,
-            rounds_final: parseInt(form.rounds_final.value) || 0
+            rounds_final: parseInt(form.rounds_final.value) || 0,
+            rounds_third_place: form.rounds_third_place ? (parseInt(form.rounds_third_place.value) || 0) : 0
         };
 
         try {
-            // Używamy tego samego endpointu co dodawanie, on obsługuje "upsert" (update jeśli istnieje)
             const response = await fetch(`/api/tournaments/${TOURNAMENT_ID}/add_team`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

@@ -35,16 +35,20 @@ class TournamentBase(BaseModel):
     bracket_type: str = "Bracket 8 teams"
     weight: float = 1.0
 
-    # --- ZMIANA NAZWY ---
     weight_group: float = 0.4
-    # --------------------
     weight_quarters: float = 0.2
     weight_semis: float = 0.2
     weight_final: float = 0.2
+
+    has_third_place: bool = False
+    weight_third_place: float = 0.1
+
+    weight_group_override: Optional[float] = None
     weight_semis_override: Optional[float] = None
     weight_final_override: Optional[float] = None
 
 class TournamentCreate(TournamentBase): pass
+
 class TournamentUpdate(BaseModel):
     name: Optional[str] = None
     bracket_type: Optional[str] = None
@@ -53,6 +57,11 @@ class TournamentUpdate(BaseModel):
     weight_quarters: Optional[float] = None
     weight_semis: Optional[float] = None
     weight_final: Optional[float] = None
+
+    has_third_place: Optional[bool] = None
+    weight_third_place: Optional[float] = None
+
+    weight_group_override: Optional[float] = None
     weight_semis_override: Optional[float] = None
     weight_final_override: Optional[float] = None
 
@@ -64,9 +73,10 @@ class AddTeamToTournament(BaseModel):
     team_id: int
     starts_in_semis: bool = False
     rounds_group: int = 1
-    rounds_quarters: int = 1
-    rounds_semis: int = 1
-    rounds_final: int = 1
+    rounds_quarters: int = 0
+    rounds_semis: int = 0
+    rounds_final: int = 0
+    rounds_third_place: int = 0
 
 class TournamentTeam(BaseModel):
     id: int
@@ -86,6 +96,7 @@ class PlayerTournamentPerformanceBase(BaseModel):
     rating_quarters: Optional[float] = None
     rating_semis: Optional[float] = None
     rating_final: Optional[float] = None
+    rating_third_place: Optional[float] = None  # Nowe pole
 
 class PlayerTournamentPerformanceCreate(PlayerTournamentPerformanceBase):
     player_id: int
@@ -186,6 +197,7 @@ class PhaseWeights(BaseModel):
     weight_qf: float
     weight_sf: float
     weight_final: float
+    weight_third_place: float = 0.1
 
 
 class CustomRankingParams(BaseModel):
@@ -195,10 +207,10 @@ class CustomRankingParams(BaseModel):
     base_multiplier: float = 15.0
 
     # Bonusy fazowe
-    bonus_qf: float = 0.1
-    bonus_sf: float = 0.2
-    bonus_final: float = 0.3
-
+    bonus_qf: float = 0.15
+    bonus_sf: float = 0.15
+    bonus_final: float = 0.15
+    bonus_third_place: float = 0.15  # Nowy bonus
     # Słownik: ID Turnieju -> Wagi Faz
     # Jeśli ID turnieju nie ma w tym słowniku, używamy danych z bazy
     tournament_overrides: Dict[int, PhaseWeights] = {}
