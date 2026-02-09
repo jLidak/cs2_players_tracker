@@ -6,11 +6,12 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
+from typing import Optional # <--- WAŻNY IMPORT
 import models
 import schemas
 from database import get_db
 from routers.ranking import get_ranking
-
+from routers.ranking import get_ranking # Importujemy logikę
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory="templates")
 
@@ -139,4 +140,22 @@ def custom_ranking_view(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse("custom_ranking.html", {
         "request": request,
         "tournaments": tournaments
+    })
+
+
+@router.get("/ranking", response_class=HTMLResponse)
+def ranking_view(request: Request, tournament_id: Optional[int] = None, db: Session = Depends(get_db)):
+    # ZMIANA: tournament_id: int -> tournament_id: Optional[int]
+
+    # 1. Pobieramy listę turniejów do filtra
+    tournaments = db.query(models.Tournament).order_by(models.Tournament.id.desc()).all()
+
+    # 2. Obliczamy ranking (z filtrem lub bez)
+    ranking_data = get_ranking(db=db, tournament_id=tournament_id)
+
+    return templates.TemplateResponse("ranking.html", {
+        "request": request,
+        "ranking": ranking_data,
+        "tournaments": tournaments,
+        "selected_tournament_id": tournament_id
     })

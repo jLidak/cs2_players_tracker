@@ -4,8 +4,23 @@
 
 {% block content %}
 <div class="card">
-    <h1>Ranking Graczy</h1>
-    <p>Ranking obliczany na podstawie wzoru: Suma (Punkty x Waga Turnieju)</p>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div>
+            <h1>Ranking Graczy</h1>
+            <p style="margin: 0; color: #666;">Ranking obliczany na podstawie wzoru: Suma (Punkty x Waga Turnieju)</p>
+        </div>
+
+        <form method="get" action="/ranking" style="display: flex; align-items: center;">
+            <select name="tournament_id" onchange="this.form.submit()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem;">
+                <option value="">Wszystkie Turnieje (Ranking Ogólny)</option>
+                {% for t in tournaments %}
+                <option value="{{ t.id }}" {% if selected_tournament_id == t.id %}selected{% endif %}>
+                    {{ t.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
 </div>
 
 <div class="card">
@@ -25,11 +40,11 @@
             <tr style="cursor: pointer;" onclick="window.location.href='/player/{{ entry.player_id }}'">
                 <td style="text-align: center; font-weight: bold; font-size: 1.2rem;">
                     {% if loop.index == 1 %}
-                    1
+                    🥇
                     {% elif loop.index == 2 %}
-                    2
+                    🥈
                     {% elif loop.index == 3 %}
-                    3
+                    🥉
                     {% else %}
                     {{ loop.index }}
                     {% endif %}
@@ -43,13 +58,13 @@
                 </td>
                 <td style="font-weight: 600;">{{ entry.nickname }}</td>
                 <td>{{ entry.team_name if entry.team_name else '-' }}</td>
-                <td style="text-align: right; font-weight: bold; color: #667eea;">{{  entry.total_points }}</td>
+                <td style="text-align: right; font-weight: bold; color: #667eea; font-size: 1.1em;">{{  entry.total_points }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <p style="color: #999; text-align: center; padding: 2rem;">Brak danych rankingowych</p>
+    <p style="color: #999; text-align: center; padding: 2rem;">Brak danych rankingowych dla wybranego filtra.</p>
     {% endif %}
 </div>
 {% endblock %}

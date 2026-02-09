@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import math
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session, joinedload
@@ -10,7 +10,7 @@ router = APIRouter(tags=["Ranking"])
 
 
 @router.get("/api/ranking/", response_model=List[schemas.RankingEntry])
-def get_ranking(db: Session = Depends(get_db)):
+def get_ranking(db: Session = Depends(get_db), tournament_id: Optional[int] = None):
     players = db.query(models.Player).options(
         joinedload(models.Player.team),
         joinedload(models.Player.tournament_performances).joinedload(models.PlayerTournamentPerformance.tournament),
@@ -22,6 +22,10 @@ def get_ranking(db: Session = Depends(get_db)):
         total_points = 0.0
 
         for perf in player.tournament_performances:
+
+            if tournament_id is not None and perf.tournament_id != tournament_id:
+                continue
+
             tour = perf.tournament
 
             participation = db.query(models.TournamentTeam).filter(
@@ -63,7 +67,6 @@ def get_ranking(db: Session = Depends(get_db)):
                 semis_w = tour.weight_semis_override if tour.weight_semis_override is not None else remaining_for_playoff / 2
                 final_w = tour.weight_final_override if tour.weight_final_override is not None else remaining_for_playoff / 2
 
-                tournament_points_sum += calc_phase_points(perf.rating_group, group_w, r_group)
                 tournament_points_sum += calc_phase_points(perf.rating_semis, semis_w, r_semis, bonus=0.15)
                 tournament_points_sum += calc_phase_points(perf.rating_final, final_w, r_final, bonus=0.15)
 
@@ -83,13 +86,14 @@ def get_ranking(db: Session = Depends(get_db)):
 
             total_points += max(0.0, tournament_points_sum) * tour.weight
 
-        ranking.append({
-            "player_id": player.id,
-            "nickname": player.nickname,
-            "team_name": player.team.name if player.team else "No Team",
-            "total_points": round(total_points),
-            "photo_url": player.photo_url
-        })
+        if tournament_id is None or total_points > 0:
+            ranking.append({
+                "player_id": player.id,
+                "nickname": player.nickname,
+                "team_name": player.team.name if player.team else "No Team",
+                "total_points": round(total_points),
+                "photo_url": player.photo_url
+            })
 
     ranking.sort(key=lambda x: x["total_points"], reverse=True)
     return ranking
