@@ -1,3 +1,4 @@
+
 """
 Moduł konfiguracyjny bazy danych SQLite dla aplikacji CS2 Player Tracker.
 Zawiera inicjalizację silnika SQLAlchemy oraz funkcję do uzyskiwania sesji bazodanowej.

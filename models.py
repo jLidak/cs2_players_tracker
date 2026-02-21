@@ -138,3 +138,4 @@ class PlayerRankingPoint(Base):
     player_id: Mapped[int] = mapped_column(Integer, ForeignKey("players.id"), nullable=False)
     tournament_id: Mapped[int] = mapped_column(Integer, ForeignKey("tournaments.id"), nullable=False)
     points: Mapped[float] = mapped_column(Float, nullable=False)
+

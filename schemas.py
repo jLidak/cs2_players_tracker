@@ -243,3 +243,4 @@ class RankingEntry(BaseModel):
 
     # Lista szczegółów (może być pusta, jeśli nie potrzebujemy detali wszędzie)
     details: List[TournamentPointsDetail] = []
+
