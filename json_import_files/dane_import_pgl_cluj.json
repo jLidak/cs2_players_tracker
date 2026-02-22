@@ -1,0 +1,186 @@
+{
+  "teams": [
+    {
+      "name": "paiN",
+      "logo_url": "https://img-cdn.hltv.org/teamlogo/x7znFH8_QjLXOQRyR2y7Xp.png?ixlib=java-2.1.0&w=50&s=e4435bf7c351b546b867adc1d7886795",
+      "players": [
+        {
+          "nickname": "vsm",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/9l4fmqtPpnYTVLSpIszftp.png?ixlib=java-2.1.0&w=400&s=a49d24061ab0d5cf60dfa48989e64d94"
+        },
+        {
+          "nickname": "biguzera",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/HUy3TltSQxWgWwlTy42u9k.png?ixlib=java-2.1.0&w=400&s=4965d6fb0352a171baa71fbc16046e4d"
+        },
+        {
+          "nickname": "piriajr",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/VYJimjFTbcbszh3T6eJsNa.png?ixlib=java-2.1.0&w=400&s=5a25a385efea675f761f5c2aa3c294ce"
+        },
+        {
+          "nickname": "nqz",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/rWWHODifGqiby9uKvN8aFu.png?ixlib=java-2.1.0&w=400&s=15ce0e3337b1b4790dd5a66e3bafac66"
+        },
+        {
+          "nickname": "snow",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/l97Ga-CHqlvYGF_y4oTUr5.png?ixlib=java-2.1.0&w=400&s=d67ced065eabeef6d9a01bc81cf7287b"
+        }
+      ]
+    },
+    {
+      "name": "B8",
+      "logo_url": "https://img-cdn.hltv.org/teamlogo/rUIL5D299QDtRjXR2rxqV_.png?ixlib=java-2.1.0&w=50&s=3c6cf22f3a3c85a5fb69af20395bebfc",
+      "players": [
+        {
+          "nickname": "alex666",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/Jt-DXIL47Y0W1S4bCVcM0F.png?ixlib=java-2.1.0&w=400&s=a5188eb66527f10742aec39c554044aa"
+        },
+        {
+          "nickname": "npl",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/AYuclo1QTkgChvauJVLHd4.png?ixlib=java-2.1.0&w=400&s=e298c0c475d1029fbd177b1f7c48cda5"
+        },
+        {
+          "nickname": "kensizor",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/xucg3E9L0Ykx-0HrQRH4zp.png?ixlib=java-2.1.0&w=400&s=2f72c12d87b3d945c1814fc2b22fab9b"
+        },
+        {
+          "nickname": "esenthial",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/TrvdZmKdSvomvCvfBwk163.png?ixlib=java-2.1.0&w=400&s=ae95d94270a1625cf05eb9e6863f5128"
+        },
+        {
+          "nickname": "s1zzi",
+          "photo_url": "https://www.hltv.org/img/static/player/player_silhouette.png"
+        }
+      ]
+    },
+    {
+      "name": "3DMAX",
+      "logo_url": "https://img-cdn.hltv.org/teamlogo/QGPDS3Z2-aMXwCYVgA4RWH.png?ixlib=java-2.1.0&w=50&s=ec528d7e9d0f9b6b4bac227901fb1590",
+      "players": [
+        {
+          "nickname": "bodyy",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/R4RYBwsCSgO64KAyZJS19c.png?ixlib=java-2.1.0&w=400&s=ade02ef612fc28f1325a09eada8df3d2"
+        },
+        {
+          "nickname": "Maka",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/yaZcWANq4jUXjDQn9sf1IP.png?ixlib=java-2.1.0&w=400&s=cbe7d85639584a8795f7d73ee0cfddc9"
+        },
+        {
+          "nickname": "Lucky",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/sc115Rhly3vtToVjypoaQk.png?ixlib=java-2.1.0&w=400&s=399e4db4f6feda9631d91edc7ac417bf"
+        },
+        {
+          "nickname": "Ex3rcice",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/_H5DzESIwLORNpi7qeIj8Q.png?ixlib=java-2.1.0&w=400&s=ff952655e9616c4104d3648a58d03fd4"
+        },
+        {
+          "nickname": "Graviti",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/bk7lfkSWkDuafr4kjGqzWc.png?ixlib=java-2.1.0&w=400&s=479e1d70216bda7c704427967140fe38"
+        }
+      ]
+    },
+    {
+      "name": "FUT",
+      "logo_url": "https://img-cdn.hltv.org/teamlogo/Os71GAOy8KDuQFc0M8HE6O.png?ixlib=java-2.1.0&w=100&s=828ea5ad48c3f170daf3ab9d983c8048",
+      "players": [
+        {
+          "nickname": "dem0n",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/m-E0Whi5bfZqozL5O_33O1.png?ixlib=java-2.1.0&w=400&s=cd570388c361498da6ab29804150220f"
+        },
+        {
+          "nickname": "lauNX",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/_qYKTpD-tCs0s5uTyYwNPr.png?ixlib=java-2.1.0&w=400&s=2e9b502012d7eb25cc2cbb00190490cf"
+        },
+        {
+          "nickname": "Krabeni",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/-Eqb019s9P0OqOjOnDgYpN.png?ixlib=java-2.1.0&w=400&s=1dd934e8e864c8140e18804c72f4fed7"
+        },
+        {
+          "nickname": "cmtry",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/O1WJTjqxrLY_Mtdjhj_emY.png?ixlib=java-2.1.0&w=400&s=741ddab5aa0b04ce267ec7e4992f8f9c"
+        },
+        {
+          "nickname": "dziugss",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/L6JDLWmx81mkqJldfj0x1A.png?ixlib=java-2.1.0&w=400&s=9e339a1e165d1cf39f6ade9593836c79"
+        }
+      ]
+    },
+    {
+      "name": "NRG",
+      "logo_url": "https://img-cdn.hltv.org/teamlogo/SJZaPBCyZssru-pUDS3aZe.png?ixlib=java-2.1.0&w=50&s=5f4ca255d90b4ea7092882834bbf1bdc",
+      "players": [
+        {
+          "nickname": "nitr0",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/VV5H8oDdijd-yrY420upLi.png?ixlib=java-2.1.0&w=400&s=843a2ebc3aa094c2087d788f10b6a4da"
+        },
+        {
+          "nickname": "Sonic",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/Fuul_Sae87vY63eQkabuKx.png?ixlib=java-2.1.0&w=400&s=face1674a548434672527fb4f78f31b9"
+        },
+        {
+          "nickname": "oSee",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/PSZRu17-f2TcgPB_aFuY0p.png?ixlib=java-2.1.0&w=400&s=01e839321d0044ec205bd544146c1cd2"
+        },
+        {
+          "nickname": "br0",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/GUQ9JBYM_eIJtW-0jbCeBM.png?ixlib=java-2.1.0&w=400&s=0c0dba1dc1ecbdcd452bb2a989d2bba9"
+        },
+        {
+          "nickname": "Jeorge",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/7WRnNHB97ogQmtqTw_3LV3.png?ixlib=java-2.1.0&w=400&s=c909552e657885c4c2d46c50a7f008bf"
+        }
+      ]
+    },
+    {
+      "name": "BC.Game",
+      "logo_url": "https://img-cdn.hltv.org/teamlogo/Hwf-Y5nN-3qSvd0FZXOCh5.png?ixlib=java-2.1.0&w=50&s=a139a056665fc6d1534bd4d969ad2eaf",
+      "players": [
+        {
+          "nickname": "MUTiRiS",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/5U4iagsonSBdohLMVwmx9Z.png?ixlib=java-2.1.0&w=400&s=05164ba2523809263350cea232064a63"
+        },
+        {
+          "nickname": "s1mple",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/kIHjh9sr2gW8b-xmLfW4Oq.png?ixlib=java-2.1.0&w=400&s=64dfb77304c7c004658a0e7a43d67cad"
+        },
+        {
+          "nickname": "electronic",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/-EsiMSE9qt8piQO58DEZKo.png?ixlib=java-2.1.0&w=400&s=d9cbe05030f6a1467a5ad4e571310798"
+        },
+        {
+          "nickname": "aragornN",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/4s2VvIYvGhVnWnglubtDq6.png?ixlib=java-2.1.0&w=400&s=c6255e7bf212ec7f0e4719a1a32c4802"
+        },
+        {
+          "nickname": "krazy",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/U1oyghqfNFF6ZBHeG0SIZx.png?ixlib=java-2.1.0&w=400&s=8548736f484d7b23316b631910753af4"
+        }
+      ]
+    },
+    {
+      "name": "The MongolZ",
+      "logo_url": "https://img-cdn.hltv.org/teamlogo/bRk2sh_tSTO6fq1GLhgcal.png?ixlib=java-2.1.0&w=50&s=8b08e53858eb817852ae74b30a30151d",
+      "players": [
+        {
+          "nickname": "bLitz",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/fpFRxLo1gokUpVUe08c2da.png?ixlib=java-2.1.0&w=400&s=bfd2b56e5b9300848520ad9be1d132b3"
+        },
+        {
+          "nickname": "Techno",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/Bwqv1Pg1Kng2i_Uec1Dbo7.png?ixlib=java-2.1.0&w=400&s=88a6be2c5a325fe181b21167996eb700"
+        },
+        {
+          "nickname": "mzinho",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/n-ZLurXgrZxPVAADroVVQX.png?ixlib=java-2.1.0&w=400&s=6276e3f5e6c01ebd2ca766f75bdbed0c"
+        },
+        {
+          "nickname": "910",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/k2gSyjwVhBTXPxn5DP0OuT.png?ixlib=java-2.1.0&w=400&s=2d02cea78ebbe1bef0baf5b2a3c962a7"
+        },
+        {
+          "nickname": "cobrazera",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/dZjhIExekqAZRI4nNDJko4.png?ixlib=java-2.1.0&w=400&s=23cf1908ddd1c9cad9ffdb77a284abf1"
+        }
+      ]
+    }
+  ]
+}

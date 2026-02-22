@@ -8,9 +8,9 @@ from database import get_db
 
 router = APIRouter(tags=["Ranking"])
 # --- STAŁE DO OBLICZEŃ (Konfiguracja) ---
-RANKING_BASE_MULTIPLIER = 67.0  # Podstawowy mnożnik punktów
+RANKING_BASE_MULTIPLIER = 50.0  # Podstawowy mnożnik punktów
 RANKING_ROUNDS_ROOT = 2.66  # Stopień pierwiastka dla rund (np. rounds^(1/2.66))
-RANKING_RATING_EXPONENT_DIV = 1.1  # Dzielnik wykładnika ratingu (np. diff^(1/1.1))
+RANKING_RATING_EXPONENT_DIV = 1.0  # Dzielnik wykładnika ratingu (np. diff^(1/1.1))
 
 
 @router.get("/api/ranking/", response_model=List[schemas.RankingEntry])
