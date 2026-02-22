@@ -10,7 +10,7 @@ from typing import Optional # <--- WAŻNY IMPORT
 import models
 import schemas
 from database import get_db
-from routers.ranking import get_ranking, RANKING_BASE_MULTIPLIER, RANKING_ROUNDS_ROOT, RANKING_RATING_EXPONENT_DIV, RANKING_BONUS
+from routers.ranking import RANKING_BASE_MULTIPLIER, RANKING_ROUNDS_ROOT, RANKING_RATING_EXPONENT_DIV, RANKING_BONUS
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory="templates")
 
@@ -132,10 +132,12 @@ def import_json_page(request: Request):
 @router.get("/custom-ranking", response_class=HTMLResponse)
 def custom_ranking_view(request: Request, db: Session = Depends(get_db)):
     tournaments = db.query(models.Tournament).order_by(models.Tournament.id.desc()).all()
+    presets = db.query(models.CustomRankingPreset).order_by(models.CustomRankingPreset.name).all()
 
     return templates.TemplateResponse("custom_ranking.html", {
         "request": request,
         "tournaments": tournaments,
+        "presets": presets,
         "base_multiplier": RANKING_BASE_MULTIPLIER,
         "rounds_root": RANKING_ROUNDS_ROOT,
         "rating_exp": RANKING_RATING_EXPONENT_DIV,
@@ -170,3 +172,4 @@ def ranking_view(request: Request, tournament_id: Optional[str] = None, db: Sess
         "tournaments": tournaments,
         "selected_tournament_id": tid_int  # Przekazujemy przetworzone ID
     })
+

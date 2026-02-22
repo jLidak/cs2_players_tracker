@@ -1,10 +1,10 @@
 from __future__ import annotations
 from typing import List, Optional
 from datetime import date
-from sqlalchemy import Integer, String, Float, ForeignKey, Date, Boolean
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Date, JSON, DateTime
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from database import Base
-
+from datetime import datetime
 
 class Team(Base):
     __tablename__ = "teams"
@@ -139,3 +139,11 @@ class PlayerRankingPoint(Base):
     tournament_id: Mapped[int] = mapped_column(Integer, ForeignKey("tournaments.id"), nullable=False)
     points: Mapped[float] = mapped_column(Float, nullable=False)
 
+
+class CustomRankingPreset(Base):
+    __tablename__ = "custom_ranking_presets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    settings = Column(JSON)  # Przechowuje wszystkie wagi jako obiekt JSON
+    created_at = Column(DateTime, default=datetime.utcnow)  # Nowa kolumna daty

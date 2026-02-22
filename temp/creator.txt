@@ -1,0 +1,1 @@
+                        <span class="tooltip-text">Stały dodatek do ratingu (np. +0.15) za udział w trudniejszych fazach turnieju. Sztucznie podbija rating zawodnika za mecze pucharowe. Używany w celu uniknięcia kary, dla zawodników, którzy przechodząc do dalszej fazy turnieju uzyskali rating poniżej 1.0.</span>

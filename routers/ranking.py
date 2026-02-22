@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 import models
 import schemas
 from database import get_db
+from fastapi import HTTPException
 
 router = APIRouter(tags=["Ranking"])
 
@@ -259,3 +260,37 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
 
     ranking.sort(key=lambda x: x.total_points, reverse=True)
     return ranking
+
+
+@router.get("/api/ranking-presets/", response_model=List[schemas.CustomRankingPreset])
+def get_ranking_presets(db: Session = Depends(get_db)):
+    return db.query(models.CustomRankingPreset).all()
+
+
+@router.post("/api/ranking-presets/", response_model=schemas.CustomRankingPreset)
+def create_ranking_preset(preset: schemas.CustomRankingPresetCreate, db: Session = Depends(get_db)):
+    # Jeśli preset o takiej nazwie istnieje, nadpisujemy go
+    existing = db.query(models.CustomRankingPreset).filter(models.CustomRankingPreset.name == preset.name).first()
+    if existing:
+        existing.settings = preset.settings
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    # W przeciwnym razie tworzymy nowy
+    db_preset = models.CustomRankingPreset(name=preset.name, settings=preset.settings)
+    db.add(db_preset)
+    db.commit()
+    db.refresh(db_preset)
+    return db_preset
+
+
+@router.delete("/api/ranking-presets/{preset_id}")
+def delete_ranking_preset(preset_id: int, db: Session = Depends(get_db)):
+    db_preset = db.query(models.CustomRankingPreset).filter(models.CustomRankingPreset.id == preset_id).first()
+    if not db_preset:
+        raise HTTPException(status_code=404, detail="Preset not found")
+
+    db.delete(db_preset)
+    db.commit()
+    return {"message": "Preset usunięty"}

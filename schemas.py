@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Dict, Optional
 from datetime import date
+from datetime import datetime
 
 class TeamBase(BaseModel):
     name: str
@@ -262,3 +263,18 @@ class TournamentWeightOverride(BaseModel):
     weight_semis_override: Optional[float] = None
     weight_final_override: Optional[float] = None
     weight_third_place: Optional[float] = 0.0
+
+    # ... reszta schemas.py bez zmian ...
+
+# --- CUSTOM RANKING PRESETS --- (Dodaj to na sam dół)
+class CustomRankingPresetBase(BaseModel):
+    name: str
+    settings: Dict
+
+class CustomRankingPresetCreate(CustomRankingPresetBase):
+    pass
+
+class CustomRankingPreset(CustomRankingPresetBase):
+    id: int
+    created_at: Optional[datetime] = None
+    model_config = ConfigDict(from_attributes=True)
