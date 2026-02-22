@@ -193,11 +193,16 @@ class ImportData(BaseModel):
 
 # --- CUSTOM RANKING ---
 class PhaseWeights(BaseModel):
+    tournament_weight: Optional[float] = None  # <--- NOWE POLE (Waga całego turnieju)
     weight_group: float
     weight_qf: float
     weight_sf: float
     weight_final: float
     weight_third_place: float = 0.1
+    # Dodane brakujące pola dla drabinki 6-drużynowej:
+    weight_group_override: Optional[float] = None
+    weight_semis_override: Optional[float] = None
+    weight_final_override: Optional[float] = None
 
 
 class CustomRankingParams(BaseModel):
@@ -211,10 +216,13 @@ class CustomRankingParams(BaseModel):
     bonus_sf: float = 0.15
     bonus_final: float = 0.15
     bonus_third_place: float = 0.15  # Nowy bonus
+
+    # Dodane brakujące pole do filtrowania konkretnego turnieju:
+    tournament_id: Optional[int] = None
+
     # Słownik: ID Turnieju -> Wagi Faz
     # Jeśli ID turnieju nie ma w tym słowniku, używamy danych z bazy
     tournament_overrides: Dict[int, PhaseWeights] = {}
-
 
 # Nowy model dla szczegółów fazy (np. punkty za grupę)
 class PhasePointsDetail(BaseModel):
@@ -244,3 +252,13 @@ class RankingEntry(BaseModel):
     # Lista szczegółów (może być pusta, jeśli nie potrzebujemy detali wszędzie)
     details: List[TournamentPointsDetail] = []
 
+class TournamentWeightOverride(BaseModel):
+    weight_group: float
+    weight_qf: float
+    weight_sf: float
+    weight_final: float
+    # Nowe pola dla drabinki 6-drużynowej:
+    weight_group_override: Optional[float] = None
+    weight_semis_override: Optional[float] = None
+    weight_final_override: Optional[float] = None
+    weight_third_place: Optional[float] = 0.0
