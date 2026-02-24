@@ -10,8 +10,8 @@
     </div>
 
     <div style="margin-top: 10px; font-size: 0.9rem; color: #555;">
-        <strong>Waga Turnieju:</strong> {{ tournament.weight }} <br>
-        <strong>Wagi Faz:</strong>
+        <strong>Tournament Weight:</strong> {{ tournament.weight }} <br>
+        <strong>Phase Weights:</strong>
         Group: {{ tournament.weight_group }} |
         QF: {{ tournament.weight_quarters }} |
         SF: {{ tournament.weight_semis }}
@@ -20,29 +20,29 @@
         {% if tournament.weight_final_override %}<span style="color:#16a085;">({{ tournament.weight_final_override }})</span>{% endif %}
 
         {% if tournament.has_third_place %}
-        <br><strong>Mecz o 3. miejsce:</strong> Waga {{ tournament.weight_third_place }}
+        <br><strong>3rd Place Match:</strong> Weight {{ tournament.weight_third_place }}
         {% endif %}
     </div>
 </div>
 
 <div class="card" style="display: flex; justify-content: space-between; align-items: center; background: #fdfdfd; border-left: 5px solid #27ae60; padding: 15px; margin-top: 15px;">
     <div>
-        <strong style="color: #333; display: block; font-size: 1.1rem;">Zarządzanie wynikami</strong>
-        <span style="font-size: 0.8rem; color: #777;">Zapisz jednocześnie wszystkie awanse, wprowadzone rundy dla drużyn i ratingi dla graczy.</span>
+        <strong style="color: #333; display: block; font-size: 1.1rem;">Manage Results</strong>
+        <span style="font-size: 0.8rem; color: #777;">Save all advancements, team rounds, and player ratings at once.</span>
     </div>
     <button id="saveAllBtn" onclick="saveAllChanges()" class="btn" style="background: #27ae60; padding: 10px 20px; font-size: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        💾 Zapisz wszystko
+        💾 Save All
     </button>
 </div>
 
 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-top: 20px;">
 
     <div class="card">
-        <h3>Uczestnicy (Awanse i Rundy)</h3>
+        <h3>Participants (Advancements & Rounds)</h3>
 
         <div style="background: #f1f1f1; padding: 10px; border-radius: 5px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
-            <strong style="margin: 0; font-size: 0.95rem;">Zarządzaj zespołami:</strong>
-            <button onclick="openAddTeamsModal()" class="btn" style="background: #3498db; font-size: 0.85rem; padding: 6px 12px;">➕ Dodaj drużyny</button>
+            <strong style="margin: 0; font-size: 0.95rem;">Manage teams:</strong>
+            <button onclick="openAddTeamsModal()" class="btn" style="background: #3498db; font-size: 0.85rem; padding: 6px 12px;">➕ Add teams</button>
         </div>
 
         <ul style="list-style: none; padding: 0;">
@@ -52,10 +52,10 @@
                     <strong style="font-size: 1.1em;">
                         {{ p.team.name }}
                         {% if p.starts_in_semis %}
-                        <span style="font-size: 0.7rem; color: #27ae60; font-weight: normal; margin-left: 5px;">(Start w SF)</span>
+                        <span style="font-size: 0.7rem; color: #27ae60; font-weight: normal; margin-left: 5px;">(Starts in SF)</span>
                         {% endif %}
                     </strong>
-                    <button onclick="removeTeam({{ p.team.id }})" style="background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.7rem;">Usuń</button>
+                    <button onclick="removeTeam({{ p.team.id }})" style="background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.7rem;">Remove</button>
                 </div>
 
                 <form class="team-stats-form" data-team-id="{{ p.team.id }}" data-starts-in-semis="{{ 'true' if p.starts_in_semis else 'false' }}" onsubmit="updateTeamStats(event, {{ p.team.id }}, {{ p.starts_in_semis|lower }})" style="display: flex; flex-wrap: nowrap; gap: 6px; align-items: flex-end; overflow-x: auto; padding-bottom: 5px;">
@@ -110,29 +110,29 @@
                         <input type="hidden" name="rounds_third_place" value="0">
                     {% endif %}
 
-                    <button type="submit" class="btn" style="padding: 4px 8px; font-size: 0.75rem; background-color: #bdc3c7; color: #333; height: 26px; margin-left: auto;" title="Zapisz tylko tę drużynę">Zapisz</button>
+                    <button type="submit" class="btn" style="padding: 4px 8px; font-size: 0.75rem; background-color: #bdc3c7; color: #333; height: 26px; margin-left: auto;" title="Save only this team">Save</button>
                 </form>
             </li>
             {% else %}
-            <li style="color: #888; text-align: center; padding: 10px;">Brak drużyn.</li>
+            <li style="color: #888; text-align: center; padding: 10px;">No teams.</li>
             {% endfor %}
         </ul>
     </div>
 
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
-            <h3 style="margin: 0;">Wyniki Graczy (Ratingi)</h3>
-            <input type="text" id="playerTeamSearchInput" onkeyup="applyFilters()" placeholder="🔍 Szukaj gracza lub drużyny..." style="padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9rem; font-weight: normal; width: 220px; outline: none;">
+            <h3 style="margin: 0;">Player Results (Ratings)</h3>
+            <input type="text" id="playerTeamSearchInput" onkeyup="applyFilters()" placeholder="🔍 Search for a player or team..." style="padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9rem; font-weight: normal; width: 220px; outline: none;">
         </div>
 
         <div style="display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap;">
-            <button id="btn-filter-all" class="btn tab-btn active-tab" onclick="filterPhase('all')">Wszystkie fazy</button>
-            <button id="btn-filter-group" class="btn tab-btn" onclick="filterPhase('group')">Grupa</button>
-            <button id="btn-filter-quarters" class="btn tab-btn" onclick="filterPhase('quarters')">Ćwierćfinał</button>
-            <button id="btn-filter-semis" class="btn tab-btn" onclick="filterPhase('semis')">Półfinał</button>
-            <button id="btn-filter-final" class="btn tab-btn" onclick="filterPhase('final')">Finał</button>
+            <button id="btn-filter-all" class="btn tab-btn active-tab" onclick="filterPhase('all')">All phases</button>
+            <button id="btn-filter-group" class="btn tab-btn" onclick="filterPhase('group')">Group</button>
+            <button id="btn-filter-quarters" class="btn tab-btn" onclick="filterPhase('quarters')">Quarter-final</button>
+            <button id="btn-filter-semis" class="btn tab-btn" onclick="filterPhase('semis')">Semi-final</button>
+            <button id="btn-filter-final" class="btn tab-btn" onclick="filterPhase('final')">Final</button>
             {% if tournament.has_third_place %}
-            <button id="btn-filter-third" class="btn tab-btn" onclick="filterPhase('third')" style="color: #d35400; border-color: #d35400;">O 3. miejsce</button>
+            <button id="btn-filter-third" class="btn tab-btn" onclick="filterPhase('third')" style="color: #d35400; border-color: #d35400;">3rd Place</button>
             {% endif %}
         </div>
 
@@ -140,8 +140,8 @@
             <table class="table compact-table">
                 <thead>
                     <tr>
-                        <th>Gracz</th>
-                        <th>Drużyna</th>
+                        <th>Player</th>
+                        <th>Team</th>
                         <th class="col-group">Group</th>
                         <th class="col-quarters">Quarter</th>
                         <th class="col-semis">Semi</th>
@@ -188,13 +188,13 @@
                         {% endif %}
 
                         <td style="text-align: right;">
-                            <button onclick="saveRating({{ player.id }})" class="btn individual-rating-save" style="background: #bdc3c7; color: #333;" title="Zapisz tylko tego gracza">Zapisz</button>
+                            <button onclick="saveRating({{ player.id }})" class="btn individual-rating-save" style="background: #bdc3c7; color: #333;" title="Save only this player">Save</button>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-            <p id="noResultsMsg" style="display: none; color: #999; text-align: center; padding: 1rem;">Brak wyników do wyświetlenia.</p>
+            <p id="noResultsMsg" style="display: none; color: #999; text-align: center; padding: 1rem;">No results to display.</p>
         </div>
     </div>
 </div>
@@ -203,11 +203,11 @@
     <div style="background: white; padding: 20px; border-radius: 8px; width: 500px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2 style="margin: 0;">Wybierz drużyny</h2>
+            <h2 style="margin: 0;">Select teams</h2>
             <button onclick="closeAddTeamsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
         </div>
 
-        <input type="text" id="addTeamSearchInput" onkeyup="filterAddTeams()" placeholder="🔍 Filtruj drużyny po nazwie..." style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; width: 100%; outline: none; margin-bottom: 15px;">
+        <input type="text" id="addTeamSearchInput" onkeyup="filterAddTeams()" placeholder="🔍 Filter teams by name..." style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; width: 100%; outline: none; margin-bottom: 15px;">
 
         <div id="addTeamsList" style="flex-grow: 1; overflow-y: auto; border: 1px solid #eee; border-radius: 5px; padding: 10px; margin-bottom: 15px; min-height: 200px;">
             {% for team in all_teams %}
@@ -218,30 +218,29 @@
                         <span class="modal-team-name">{{ team.name }}</span>
                     </label>
                     <span style="font-size: 0.8rem; color: #7f8c8d; white-space: nowrap;">
-                        Rank: <strong style="color: #2c3e50;">{{ team_points.get(team.name, 0) | int }} pkt</strong>
+                        Rank: <strong style="color: #2c3e50;">{{ team_points.get(team.name, 0) | int }} pts</strong>
                     </span>
                 </div>
                 {% endif %}
             {% endfor %}
             {% if (all_teams|length) == (participations_dict|length) %}
-                <p style="text-align: center; color: #999; margin-top: 20px;">Wszystkie drużyny z bazy biorą już udział w tym turnieju.</p>
+                <p style="text-align: center; color: #999; margin-top: 20px;">All teams from the database are already participating in this tournament.</p>
             {% endif %}
         </div>
 
         {% if tournament.bracket_type == "Bracket 6 teams" %}
         <div style="margin-bottom: 15px; background: #e8f6f3; padding: 10px; border-radius: 5px;">
             <input type="checkbox" id="modalSemisCheck">
-            <label for="modalSemisCheck" style="font-weight: bold; color: #16a085;">Zaznaczone drużyny startują w półfinale (Skip QF)</label>
+            <label for="modalSemisCheck" style="font-weight: bold; color: #16a085;">Selected teams start in the semi-finals (Skip QF)</label>
         </div>
         {% endif %}
 
         <div style="text-align: right; margin-top: auto;">
-            <button onclick="closeAddTeamsModal()" class="btn" style="background: #95a5a6; margin-right: 10px;">Anuluj</button>
-            <button onclick="submitAddTeams()" id="submitAddTeamsBtn" class="btn" style="background: #27ae60;">Dodaj zaznaczone</button>
+            <button onclick="closeAddTeamsModal()" class="btn" style="background: #95a5a6; margin-right: 10px;">Cancel</button>
+            <button onclick="submitAddTeams()" id="submitAddTeamsBtn" class="btn" style="background: #27ae60;">Add selected</button>
         </div>
     </div>
 </div>
-
 
 <style>
     .compact-table th, .compact-table td {
@@ -288,7 +287,6 @@
 <script>
     const TOURNAMENT_ID = {{ tournament.id }};
 
-    // --- ZARZĄDZANIE MODALEM DODAWANIA DRUŻYN ---
     function openAddTeamsModal() {
         document.getElementById('addTeamsModal').style.display = 'flex';
         document.getElementById('addTeamSearchInput').value = '';
@@ -297,7 +295,6 @@
 
     function closeAddTeamsModal() {
         document.getElementById('addTeamsModal').style.display = 'none';
-        // Odznaczamy wszystkie checkboxy przy zamykaniu
         document.querySelectorAll('.modal-team-checkbox').forEach(cb => cb.checked = false);
     }
 
@@ -318,19 +315,18 @@
     async function submitAddTeams() {
         const checkboxes = document.querySelectorAll('.modal-team-checkbox:checked');
         if (checkboxes.length === 0) {
-            alert("Najpierw zaznacz drużyny do dodania z listy.");
+            alert("Please select teams to add from the list first.");
             return;
         }
 
         const btn = document.getElementById('submitAddTeamsBtn');
         const originalText = btn.innerText;
-        btn.innerText = "⏳ Dodawanie...";
+        btn.innerText = "⏳ Adding...";
         btn.disabled = true;
 
         const semisCheck = document.getElementById('modalSemisCheck');
         const startsInSemis = semisCheck ? semisCheck.checked : false;
 
-        // Tworzymy asynchroniczne żądanie do API dla każdej zaznaczonej drużyny (Multi-Submit)
         const promises = Array.from(checkboxes).map(cb => {
             return fetch(`/api/tournaments/${TOURNAMENT_ID}/add_team`, {
                 method: "POST",
@@ -354,23 +350,21 @@
 
         try {
             await Promise.all(promises);
-            window.location.reload(); // Odśwież widok, żeby ukazać nowe drużyny w tabelach
+            window.location.reload();
         } catch (e) {
             console.error(e);
-            alert("Wystąpił błąd sieci podczas dodawania drużyn.");
+            alert("A network error occurred while adding teams.");
             btn.innerText = originalText;
             btn.disabled = false;
         }
     }
 
-    // Zamknij modal po kliknięciu w szare tło (poza panelem)
     window.onclick = function(event) {
         const modal = document.getElementById('addTeamsModal');
         if (event.target == modal) {
             closeAddTeamsModal();
         }
     }
-
 
     let currentPhaseFilter = 'all';
 
@@ -421,7 +415,6 @@
         applyFilters();
     }
 
-
     function togglePhaseInputs(teamId, phaseBase, isChecked, skipFilter = false) {
         const teamForm = document.querySelector(`.team-stats-form[data-team-id="${teamId}"]`);
         if (teamForm) {
@@ -460,7 +453,6 @@
         }
     }
 
-    // AUTO-NAPRAWA DANYCH I INICJALIZACJA WIDOKU
     window.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.phase-checkbox').forEach(cb => {
             const teamId = cb.getAttribute('data-team-id');
@@ -494,14 +486,13 @@
         applyFilters();
     });
 
-
     async function removeTeam(teamId) {
-        if (!confirm("Czy na pewno usunąć tę drużynę? Usunie to również wpisane wyniki jej graczy!")) return;
+        if (!confirm("Are you sure you want to remove this team? This will also remove the entered results of its players!")) return;
         try {
             const response = await fetch(`/api/tournaments/${TOURNAMENT_ID}/teams/${teamId}`, { method: "DELETE" });
             if (response.ok) window.location.reload();
-            else alert("Błąd usuwania drużyny");
-        } catch (e) { alert("Błąd sieci"); }
+            else alert("Error removing team");
+        } catch (e) { alert("Network error"); }
     }
 
     async function saveRating(playerId) {
@@ -529,8 +520,8 @@
             if (response.ok) {
                 btn.innerText = "✔"; btn.style.backgroundColor = "#2ecc71"; btn.style.color = "white";
                 setTimeout(() => { btn.innerText = originalText; btn.style.backgroundColor = "#bdc3c7"; btn.style.color = "#333"; btn.disabled = false; }, 1500);
-            } else { alert("Błąd zapisu!"); btn.innerText = "❌"; btn.disabled = false; }
-        } catch (e) { alert("Błąd sieci"); btn.disabled = false; }
+            } else { alert("Save error!"); btn.innerText = "❌"; btn.disabled = false; }
+        } catch (e) { alert("Network error"); btn.disabled = false; }
     }
 
     async function updateTeamStats(event, teamId, startsInSemis) {
@@ -562,14 +553,14 @@
             if (response.ok) {
                 btn.innerText = "✔"; btn.style.backgroundColor = "#2ecc71"; btn.style.color = "white";
                 setTimeout(() => { btn.innerText = originalText; btn.style.backgroundColor = "#bdc3c7"; btn.style.color = "#333"; btn.disabled = false; }, 1000);
-            } else { alert("Błąd zapisu rund"); btn.innerText = "❌"; btn.disabled = false; }
-        } catch (e) { alert("Błąd połączenia"); btn.disabled = false; }
+            } else { alert("Error saving rounds"); btn.innerText = "❌"; btn.disabled = false; }
+        } catch (e) { alert("Connection error"); btn.disabled = false; }
     }
 
     async function saveAllChanges() {
         const btn = document.getElementById('saveAllBtn');
         const originalText = btn.innerText;
-        btn.innerText = "⏳ Trwa zapisywanie...";
+        btn.innerText = "⏳ Saving...";
         btn.disabled = true;
 
         try {
@@ -618,21 +609,21 @@
 
             const allPromises = [...teamPromises, ...playerPromises];
             if (allPromises.length === 0) {
-                alert("Brak danych do zapisania (dodaj najpierw drużyny).");
+                alert("No data to save (add teams first).");
                 btn.innerText = originalText; btn.disabled = false; return;
             }
 
             await Promise.all(allPromises);
 
-            btn.innerText = "✔ Zapisano pomyślnie!";
+            btn.innerText = "✔ Saved successfully!";
             btn.style.backgroundColor = "#27ae60";
             setTimeout(() => { btn.innerText = originalText; btn.disabled = false; window.location.reload(); }, 1500);
         } catch (e) {
-            console.error("Błąd zapisu grupowego:", e);
-            btn.innerText = "❌ Wystąpił błąd!";
+            console.error("Group save error:", e);
+            btn.innerText = "❌ An error occurred!";
             btn.style.backgroundColor = "#e74c3c";
             setTimeout(() => { btn.innerText = originalText; btn.style.backgroundColor = "#27ae60"; btn.disabled = false; }, 3000);
-            alert("Niektóre dane mogły nie zostać zapisane z powodu błędu sieci.");
+            alert("Some data may not have been saved due to a network error.");
         }
     }
 </script>

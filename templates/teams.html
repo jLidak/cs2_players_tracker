@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Drużyny - CS2 Tracker{% endblock %}
+{% block title %}Teams - CS2 Tracker{% endblock %}
 
 {% block content %}
 <div style="max-width: 1200px; margin: 0 auto;">
 
     <div class="card" style="text-align: center; margin-bottom: 20px;">
-        <h1>Drużyny</h1>
-        <p>Zarządzaj zespołami biorącymi udział w turniejach.</p>
+        <h1>Teams</h1>
+        <p>Manage teams participating in tournaments.</p>
     </div>
 
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2>Lista Drużyn</h2>
+            <h2>Team List</h2>
             <button onclick="openAddTeamModal()" class="btn" style="background-color: #27ae60;">
-                + Dodaj Drużynę
+                + Add Team
             </button>
         </div>
 
@@ -31,13 +31,13 @@
                 </div>
 
                 <h3 style="margin: 10px 0;">{{ team.name }}</h3>
-                <p style="color: #7f8c8d; font-size: 0.9rem;">Liczba graczy: {{ team.players|length }}</p>
+                <p style="color: #7f8c8d; font-size: 0.9rem;">Number of players: {{ team.players|length }}</p>
 
                 <div style="margin-top: 15px; display: flex; gap: 5px; justify-content: center;">
                     <button onclick='openEditTeamModal({id: {{ team.id }}, name: "{{ team.name }}", logo_url: "{{ team.logo_url or "" }}"})'
-                            class="btn" style="background-color: #f39c12; font-size: 0.8rem; padding: 5px 10px;">Edytuj</button>
+                            class="btn" style="background-color: #f39c12; font-size: 0.8rem; padding: 5px 10px;">Edit</button>
                     <button onclick="deleteTeam({{ team.id }})"
-                            class="btn" style="background-color: #c0392b; font-size: 0.8rem; padding: 5px 10px;">Usuń</button>
+                            class="btn" style="background-color: #c0392b; font-size: 0.8rem; padding: 5px 10px;">Delete</button>
                 </div>
             </div>
             {% endfor %}
@@ -47,11 +47,11 @@
 
 <div id="teamModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
     <div style="background: white; padding: 25px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-        <h2 id="modalTitle" style="margin-top: 0;">Dodaj Drużynę</h2>
+        <h2 id="modalTitle" style="margin-top: 0;">Add Team</h2>
 
         <form id="teamForm" onsubmit="submitTeamForm(event)">
             <input type="hidden" id="teamId"> <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Nazwa:</label>
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Name:</label>
                 <input type="text" name="name" id="teamName" required style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
             </div>
 
@@ -61,8 +61,8 @@
             </div>
 
             <div style="text-align: right;">
-                <button type="button" class="btn" style="background: #95a5a6; margin-right: 5px;" onclick="closeTeamModal()">Anuluj</button>
-                <button type="submit" class="btn" style="background: #27ae60;">Zapisz</button>
+                <button type="button" class="btn" style="background: #95a5a6; margin-right: 5px;" onclick="closeTeamModal()">Cancel</button>
+                <button type="submit" class="btn" style="background: #27ae60;">Save</button>
             </div>
         </form>
     </div>
@@ -78,7 +78,7 @@
     const logoInput = document.getElementById('teamLogo');
 
     function openAddTeamModal() {
-        modalTitle.innerText = "Dodaj Drużynę";
+        modalTitle.innerText = "Add Team";
         teamIdInput.value = "";
         nameInput.value = "";
         logoInput.value = "";
@@ -86,7 +86,7 @@
     }
 
     function openEditTeamModal(team) {
-        modalTitle.innerText = "Edytuj Drużynę";
+        modalTitle.innerText = "Edit Team";
         teamIdInput.value = team.id;
         nameInput.value = team.name;
         logoInput.value = team.logo_url;
@@ -122,17 +122,16 @@
                 window.location.reload();
             } else {
                 const err = await response.json();
-                // Tutaj obsłużymy Twój błąd 400
-                alert("Błąd: " + (err.detail || "Nie udało się zapisać drużyny."));
+                alert("Error: " + (err.detail || "Failed to save the team."));
             }
         } catch (e) {
             console.error(e);
-            alert("Błąd połączenia z serwerem.");
+            alert("Server connection error.");
         }
     }
 
     async function deleteTeam(id) {
-        if (!confirm("Czy na pewno chcesz usunąć tę drużynę? Spowoduje to usunięcie powiązanych danych!")) return;
+        if (!confirm("Are you sure you want to delete this team? This will delete associated data!")) return;
 
         try {
             const response = await fetch(`/api/teams/${id}`, {
@@ -142,10 +141,10 @@
             if (response.ok) {
                 window.location.reload();
             } else {
-                alert("Błąd usuwania");
+                alert("Error deleting");
             }
         } catch (e) {
-            alert("Błąd sieci");
+            alert("Network error");
         }
     }
 
