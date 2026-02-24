@@ -214,7 +214,6 @@
 </div>
 
 <style>
-    /* ZMIANA: Kompaktowa tabela dla ratingów */
     .compact-table th, .compact-table td {
         padding: 3px 6px !important;
         vertical-align: middle !important;
@@ -309,7 +308,7 @@
     }
 
 
-    function togglePhaseInputs(teamId, phaseBase, isChecked) {
+    function togglePhaseInputs(teamId, phaseBase, isChecked, skipFilter = false) {
         const teamForm = document.querySelector(`.team-stats-form[data-team-id="${teamId}"]`);
         if (teamForm) {
             const roundInput = teamForm.querySelector(`input[name="rounds_${phaseBase}"]`);
@@ -342,15 +341,47 @@
             row.setAttribute(`data-in-${filterPhaseName}`, isChecked ? 'true' : 'false');
         });
 
-        applyFilters();
+        if (!skipFilter) {
+            applyFilters();
+        }
     }
 
+    // AUTO-NAPRAWA DANYCH I INICJALIZACJA WIDOKU
     window.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.phase-checkbox').forEach(cb => {
             const teamId = cb.getAttribute('data-team-id');
             const phase = cb.getAttribute('data-phase');
-            togglePhaseInputs(teamId, phase, cb.checked);
+
+            // Inteligentna naprawa starych danych: Jeśli w bazie ten etap jest odznaczony,
+            // ale drużyna ma wpisane jakiekolwiek rundy LUB którykolwiek gracz ma wpisany rating -> wymuś zaznaczenie checkboxa!
+            let hasData = false;
+
+            const teamForm = document.querySelector(`.team-stats-form[data-team-id="${teamId}"]`);
+            if (teamForm) {
+                const roundInput = teamForm.querySelector(`input[name="rounds_${phase}"]`);
+                if (roundInput && parseFloat(roundInput.value) > 0) {
+                    hasData = true;
+                }
+            }
+
+            const playerRows = document.querySelectorAll(`.player-rating-row[data-team-id="${teamId}"]`);
+            playerRows.forEach(row => {
+                const ratingInput = row.querySelector(`input[data-field="rating_${phase}"]`);
+                if (ratingInput && ratingInput.value.trim() !== '') {
+                    hasData = true;
+                }
+            });
+
+            // Jeśli istnieją dane z przeszłości, ratujemy je przed ukryciem
+            if (hasData && !cb.checked) {
+                cb.checked = true;
+            }
+
+            // Aplikujemy ostateczny wygląd wizualny (skipFilter przyspiesza ładowanie, odświeżymy na końcu)
+            togglePhaseInputs(teamId, phase, cb.checked, true);
         });
+
+        applyFilters(); // Odśwież widok raz na końcu
     });
 
     async function addTeam(event) {
