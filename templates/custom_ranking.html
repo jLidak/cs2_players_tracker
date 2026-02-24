@@ -154,10 +154,11 @@
             <table class="table" style="box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
                 <thead style="background: #eee;">
                     <tr>
-                        <th>#</th>
+                        <th style="width: 40px; text-align: center;">#</th>
                         <th>Gracz</th>
                         <th>Drużyna</th>
                         <th>Punkty</th>
+                        <th style="width: 100px; text-align: center;">Akcje</th>
                     </tr>
                 </thead>
                 <tbody id="rankingBody">
@@ -208,6 +209,16 @@
     </div>
 </div>
 
+<div id="detailsModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+    <div style="background: white; padding: 20px; border-radius: 8px; width: 700px; max-width: 95%; max-height: 90vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 id="modalTitle" style="margin: 0;">Szczegóły Punktacji</h2>
+            <button onclick="closeDetailsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+        <div id="modalContent"></div>
+    </div>
+</div>
+
 <style>
     .control-group { margin-bottom: 8px; }
     .control-group label { display: flex; align-items: center; font-weight: bold; font-size: 0.75rem; margin-bottom: 4px; }
@@ -240,7 +251,6 @@
 </style>
 
 <script>
-    // --- ZMIANA: Obsługa podwójnego filtrowania (Gracz + Drużyna) ---
     function filterCustomTable() {
         const teamFilter = document.getElementById("customTeamSearchInput").value.toLowerCase();
         const playerFilter = document.getElementById("customPlayerSearchInput").value.toLowerCase();
@@ -250,8 +260,8 @@
         let visibleCount = 0;
 
         for (let i = 0; i < rows.length; i++) {
-            const playerCell = rows[i].getElementsByTagName("td")[1]; // Kolumna 2: Gracz
-            const teamCell = rows[i].getElementsByTagName("td")[2];   // Kolumna 3: Drużyna
+            const playerCell = rows[i].getElementsByTagName("td")[1];
+            const teamCell = rows[i].getElementsByTagName("td")[2];
 
             if (playerCell && teamCell) {
                 const playerName = (playerCell.textContent || playerCell.innerText).toLowerCase();
@@ -274,7 +284,6 @@
             noResults.style.display = (visibleCount === 0 && rows.length > 0) ? "block" : "none";
         }
     }
-
 
     function toggleTourInputs(tourId) {
         const checkbox = document.getElementById(`check-${tourId}`);
@@ -383,19 +392,55 @@
 
             data.forEach(player => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${rank++}</td>
-                    <td style="display:flex; align-items:center; gap:10px;">
-                        ${player.photo_url ? `<img src="${player.photo_url}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">` : ''}
-                        <strong>${player.nickname}</strong>
-                    </td>
-                    <td>${player.team_name}</td>
-                    <td style="font-weight:bold; color: #2c3e50;">${player.total_points}</td>
-                `;
+
+                // Tworzenie struktury wiersza dla tabeli DOM
+                const tdRank = document.createElement('td');
+                tdRank.style.textAlign = 'center';
+                tdRank.innerText = rank++;
+
+                const tdPlayer = document.createElement('td');
+                tdPlayer.className = 'player-name-cell';
+                tdPlayer.style.display = 'flex';
+                tdPlayer.style.alignItems = 'center';
+                tdPlayer.style.gap = '10px';
+
+                let imgHtml = player.photo_url
+                    ? `<img src="${player.photo_url}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">`
+                    : '';
+                tdPlayer.innerHTML = `${imgHtml} <strong>${player.nickname}</strong>`;
+
+                const tdTeam = document.createElement('td');
+                tdTeam.className = 'team-name-cell';
+                tdTeam.innerText = player.team_name;
+
+                const tdPoints = document.createElement('td');
+                tdPoints.style.fontWeight = 'bold';
+                tdPoints.style.color = '#2c3e50';
+                tdPoints.innerText = player.total_points;
+
+                // Nowa kolumna Akcje z przyciskiem do szczegółów
+                const tdActions = document.createElement('td');
+                tdActions.style.textAlign = 'center';
+
+                const btnDetails = document.createElement('button');
+                btnDetails.className = 'btn';
+                btnDetails.style.padding = '5px 10px';
+                btnDetails.style.fontSize = '0.8rem';
+                btnDetails.style.background = '#3498db';
+                btnDetails.innerText = 'Szczegóły';
+                btnDetails.onclick = () => showDetails(player);
+
+                tdActions.appendChild(btnDetails);
+
+                tr.appendChild(tdRank);
+                tr.appendChild(tdPlayer);
+                tr.appendChild(tdTeam);
+                tr.appendChild(tdPoints);
+                tr.appendChild(tdActions);
+
                 tbody.appendChild(tr);
             });
 
-            // Ponowne nałożenie filtrów, żeby tabela nie zresetowała wyszukiwań
             filterCustomTable();
 
         } catch (e) {
@@ -407,6 +452,64 @@
         }
     }
 
+    // --- FUNKCJE SZCZEGÓŁÓW ZAWODNIKA (MODAL) ---
+    function showDetails(playerData) {
+        const modal = document.getElementById('detailsModal');
+        const content = document.getElementById('modalContent');
+        const title = document.getElementById('modalTitle');
+
+        title.innerText = `Szczegóły: ${playerData.nickname}`;
+        content.innerHTML = '';
+
+        if (!playerData.details || playerData.details.length === 0) {
+            content.innerHTML = '<p>Brak szczegółowych danych.</p>';
+            modal.style.display = 'flex';
+            return;
+        }
+
+        let html = '';
+
+        playerData.details.forEach(tour => {
+            html += `
+                <div style="border: 1px solid #eee; border-radius: 5px; padding: 10px; margin-bottom: 10px; background: #fafafa;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 5px;">
+                        <strong>${tour.tournament_name}</strong>
+                        <span style="font-size: 0.9em; color: #555;">Waga Turnieju: <strong>${tour.tournament_weight}</strong> | Suma: <strong style="color: #27ae60;">${tour.total_tournament_points}</strong></span>
+                    </div>
+                    <table style="width: 100%; font-size: 0.9em; border-collapse: collapse;">
+                        <tr style="background: #eee; text-align: left;">
+                            <th style="padding: 4px;">Faza</th>
+                            <th style="padding: 4px;">Rating (w/bonus)</th>
+                            <th style="padding: 4px;">Rundy</th>
+                            <th style="padding: 4px;">Waga Fazy</th>
+                            <th style="padding: 4px; text-align: right;">Punkty</th>
+                        </tr>
+            `;
+
+            tour.phases.forEach(phase => {
+                html += `
+                    <tr>
+                        <td style="padding: 4px; border-bottom: 1px solid #f1f1f1;">${phase.phase_name}</td>
+                        <td style="padding: 4px; border-bottom: 1px solid #f1f1f1;">${parseFloat(phase.rating).toFixed(2)}</td>
+                        <td style="padding: 4px; border-bottom: 1px solid #f1f1f1;">${phase.rounds}</td>
+                        <td style="padding: 4px; border-bottom: 1px solid #f1f1f1;">${phase.weight}</td>
+                        <td style="padding: 4px; border-bottom: 1px solid #f1f1f1; text-align: right; font-weight: bold;">${phase.points}</td>
+                    </tr>
+                `;
+            });
+
+            html += `</table></div>`;
+        });
+
+        content.innerHTML = html;
+        modal.style.display = 'flex';
+    }
+
+    function closeDetailsModal() {
+        document.getElementById('detailsModal').style.display = 'none';
+    }
+
+
     function openLoadModal() {
         document.getElementById('loadPresetModal').style.display = 'flex';
     }
@@ -416,9 +519,14 @@
     }
 
     window.onclick = function(event) {
-        const modal = document.getElementById('loadPresetModal');
-        if (event.target == modal) {
-            modal.style.display = "none";
+        const modal1 = document.getElementById('loadPresetModal');
+        const modal2 = document.getElementById('detailsModal');
+
+        if (event.target == modal1) {
+            modal1.style.display = "none";
+        }
+        if (event.target == modal2) {
+            modal2.style.display = "none";
         }
     }
 

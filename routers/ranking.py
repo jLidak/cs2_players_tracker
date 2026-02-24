@@ -157,6 +157,7 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
 
     for player in players:
         total_points = 0.0
+        player_details = []  # NOWE: Lista szczegółów na potrzebę kreatora
         has_participated_in_target = False
 
         for perf in player.tournament_performances:
@@ -210,8 +211,18 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
             r_third = participation.rounds_third_place if participation else 0
             starts_in_semis = participation.starts_in_semis if participation else False
 
-            def calc_points(rating, weight, phase_rounds, bonus):
+            current_tour_phases = []  # NOWE: Fazy dla tego turnieju
+
+            def process_custom_phase(phase_name, rating, weight, phase_rounds, bonus):
                 if rating is None or rating == 0 or phase_rounds == 0:
+                    current_tour_phases.append({
+                        "phase_name": phase_name,
+                        "rating": rating if rating else 0.0,
+                        "rounds": phase_rounds,
+                        "weight": weight,
+                        "points": 0.0,
+                        "bonus": bonus
+                    })
                     return 0.0
 
                 effective_rating = rating + bonus
@@ -222,24 +233,44 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
                 root_val = params.rounds_root if params.rounds_root != 0 else 1.0
                 rounds_factor = phase_rounds ** (1 / root_val)
 
-                return damped_diff * params.base_multiplier * weight * rounds_factor
+                points = damped_diff * params.base_multiplier * weight * rounds_factor
+
+                current_tour_phases.append({
+                    "phase_name": phase_name,
+                    "rating": round(effective_rating, 2),
+                    "rounds": phase_rounds,
+                    "weight": weight,
+                    "points": round(points, 2),
+                    "bonus": bonus
+                })
+
+                return points
 
             points_sum = 0.0
 
             if tour.bracket_type == "Bracket 6 teams" and starts_in_semis:
-                points_sum += calc_points(perf.rating_group, w_group_ov, r_group, 0.0)
-                points_sum += calc_points(perf.rating_semis, w_sf_ov, r_semis, params.bonus_sf)
-                points_sum += calc_points(perf.rating_final, w_final_ov, r_final, params.bonus_final)
+                points_sum += process_custom_phase("Group (Override)", perf.rating_group, w_group_ov, r_group, 0.0)
+                points_sum += process_custom_phase("Semi-Final", perf.rating_semis, w_sf_ov, r_semis, params.bonus_sf)
+                points_sum += process_custom_phase("Final", perf.rating_final, w_final_ov, r_final, params.bonus_final)
             else:
-                points_sum += calc_points(perf.rating_group, w_group, r_group, 0.0)
-                points_sum += calc_points(perf.rating_quarters, w_qf, r_quarters, params.bonus_qf)
-                points_sum += calc_points(perf.rating_semis, w_sf, r_semis, params.bonus_sf)
-                points_sum += calc_points(perf.rating_final, w_final, r_final, params.bonus_final)
+                points_sum += process_custom_phase("Group Stage", perf.rating_group, w_group, r_group, 0.0)
+                points_sum += process_custom_phase("Quarter-Final", perf.rating_quarters, w_qf, r_quarters, params.bonus_qf)
+                points_sum += process_custom_phase("Semi-Final", perf.rating_semis, w_sf, r_semis, params.bonus_sf)
+                points_sum += process_custom_phase("Final", perf.rating_final, w_final, r_final, params.bonus_final)
 
             if tour.has_third_place:
-                points_sum += calc_points(perf.rating_third_place, w_3rd, r_third, params.bonus_third_place)
+                points_sum += process_custom_phase("3rd Place", perf.rating_third_place, w_3rd, r_third, params.bonus_third_place)
 
-            total_points += max(0.0, points_sum) * t_weight
+            final_tour_points = max(0.0, points_sum) * t_weight
+            total_points += final_tour_points
+
+            # NOWE: Dodajemy szczegóły do listy
+            player_details.append({
+                "tournament_name": tour.name,
+                "tournament_weight": t_weight,
+                "phases": current_tour_phases,
+                "total_tournament_points": round(final_tour_points, 2)
+            })
 
         should_add = False
         if params.tournament_id is None:
@@ -255,7 +286,7 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
                 team_name=player.team.name if player.team else "No Team",
                 total_points=int(round(total_points)),
                 photo_url=player.photo_url,
-                details=[]
+                details=player_details  # NOWE: Przekazujemy szczegóły
             ))
 
     ranking.sort(key=lambda x: x.total_points, reverse=True)
