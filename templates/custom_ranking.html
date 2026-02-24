@@ -393,7 +393,6 @@
             data.forEach(player => {
                 const tr = document.createElement('tr');
 
-                // Tworzenie struktury wiersza dla tabeli DOM
                 const tdRank = document.createElement('td');
                 tdRank.style.textAlign = 'center';
                 tdRank.innerText = rank++;
@@ -418,7 +417,6 @@
                 tdPoints.style.color = '#2c3e50';
                 tdPoints.innerText = player.total_points;
 
-                // Nowa kolumna Akcje z przyciskiem do szczegółów
                 const tdActions = document.createElement('td');
                 tdActions.style.textAlign = 'center';
 
@@ -479,7 +477,7 @@
                     <table style="width: 100%; font-size: 0.9em; border-collapse: collapse;">
                         <tr style="background: #eee; text-align: left;">
                             <th style="padding: 4px;">Faza</th>
-                            <th style="padding: 4px;">Rating (w/bonus)</th>
+                            <th style="padding: 4px;">Rating (+Bonus)</th>
                             <th style="padding: 4px;">Rundy</th>
                             <th style="padding: 4px;">Waga Fazy</th>
                             <th style="padding: 4px; text-align: right;">Punkty</th>
@@ -487,10 +485,12 @@
             `;
 
             tour.phases.forEach(phase => {
+                // ZMIANA: Obsługa formatowania czystego ratingu z dynamicznym dopiskiem bonusu
+                let bonusStr = phase.bonus > 0 ? ` <span style="color: #27ae60; font-size: 0.85em;">(+${phase.bonus.toFixed(2)})</span>` : '';
                 html += `
                     <tr>
                         <td style="padding: 4px; border-bottom: 1px solid #f1f1f1;">${phase.phase_name}</td>
-                        <td style="padding: 4px; border-bottom: 1px solid #f1f1f1;">${parseFloat(phase.rating).toFixed(2)}</td>
+                        <td style="padding: 4px; border-bottom: 1px solid #f1f1f1;">${parseFloat(phase.rating).toFixed(2)}${bonusStr}</td>
                         <td style="padding: 4px; border-bottom: 1px solid #f1f1f1;">${phase.rounds}</td>
                         <td style="padding: 4px; border-bottom: 1px solid #f1f1f1;">${phase.weight}</td>
                         <td style="padding: 4px; border-bottom: 1px solid #f1f1f1; text-align: right; font-weight: bold;">${phase.points}</td>

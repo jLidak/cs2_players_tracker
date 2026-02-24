@@ -55,15 +55,8 @@ def get_ranking(db: Session = Depends(get_db), tournament_id: Optional[int] = No
             tournament_points_sum = 0.0
 
             def process_phase(phase_name, rating, weight, phase_rounds, bonus=0.0):
+                # Jeśli gracz nie grał w tej fazie (brak ratingu lub 0 rund), po prostu to ignorujemy
                 if rating is None or rating == 0 or phase_rounds == 0:
-                    current_tour_phases.append({
-                        "phase_name": phase_name,
-                        "rating": rating if rating else 0.0,
-                        "rounds": phase_rounds,
-                        "weight": weight,
-                        "points": 0.0,
-                        "bonus": bonus
-                    })
                     return 0.0
 
                 effective_rating = rating + bonus
@@ -75,7 +68,7 @@ def get_ranking(db: Session = Depends(get_db), tournament_id: Optional[int] = No
 
                 current_tour_phases.append({
                     "phase_name": phase_name,
-                    "rating": round(effective_rating, 2),
+                    "rating": round(rating, 2),
                     "rounds": phase_rounds,
                     "weight": weight,
                     "points": round(points, 2),
@@ -116,12 +109,14 @@ def get_ranking(db: Session = Depends(get_db), tournament_id: Optional[int] = No
             final_tour_points = max(0.0, tournament_points_sum) * tour.weight
             total_points += final_tour_points
 
-            player_details.append({
-                "tournament_name": tour.name,
-                "tournament_weight": tour.weight,
-                "phases": current_tour_phases,
-                "total_tournament_points": round(final_tour_points, 2)
-            })
+            # Dodajemy turniej do szczegółów TYLKO jeśli gracz uczestniczył w jakiejś fazie
+            if current_tour_phases:
+                player_details.append({
+                    "tournament_name": tour.name,
+                    "tournament_weight": tour.weight,
+                    "phases": current_tour_phases,
+                    "total_tournament_points": round(final_tour_points, 2)
+                })
 
         should_add = False
         if tournament_id is None:
@@ -157,7 +152,7 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
 
     for player in players:
         total_points = 0.0
-        player_details = []  # NOWE: Lista szczegółów na potrzebę kreatora
+        player_details = []
         has_participated_in_target = False
 
         for perf in player.tournament_performances:
@@ -176,7 +171,7 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
             w_sf = tour.weight_semis
             w_final = tour.weight_final
             w_3rd = tour.weight_third_place
-            t_weight = tour.weight  # Domyślna waga z bazy
+            t_weight = tour.weight
 
             w_group_ov = tour.weight_group_override if tour.weight_group_override is not None else tour.weight_group
             w_sf_ov = tour.weight_semis_override if tour.weight_semis_override is not None else (1.0 - w_group) / 2
@@ -211,18 +206,11 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
             r_third = participation.rounds_third_place if participation else 0
             starts_in_semis = participation.starts_in_semis if participation else False
 
-            current_tour_phases = []  # NOWE: Fazy dla tego turnieju
+            current_tour_phases = []
 
             def process_custom_phase(phase_name, rating, weight, phase_rounds, bonus):
+                # Zabezpieczenie przed wpisywaniem pustych faz
                 if rating is None or rating == 0 or phase_rounds == 0:
-                    current_tour_phases.append({
-                        "phase_name": phase_name,
-                        "rating": rating if rating else 0.0,
-                        "rounds": phase_rounds,
-                        "weight": weight,
-                        "points": 0.0,
-                        "bonus": bonus
-                    })
                     return 0.0
 
                 effective_rating = rating + bonus
@@ -237,7 +225,7 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
 
                 current_tour_phases.append({
                     "phase_name": phase_name,
-                    "rating": round(effective_rating, 2),
+                    "rating": round(rating, 2),
                     "rounds": phase_rounds,
                     "weight": weight,
                     "points": round(points, 2),
@@ -264,13 +252,14 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
             final_tour_points = max(0.0, points_sum) * t_weight
             total_points += final_tour_points
 
-            # NOWE: Dodajemy szczegóły do listy
-            player_details.append({
-                "tournament_name": tour.name,
-                "tournament_weight": t_weight,
-                "phases": current_tour_phases,
-                "total_tournament_points": round(final_tour_points, 2)
-            })
+            # Dodajemy turniej do szczegółów TYLKO jeśli gracz uczestniczył w jakiejś fazie
+            if current_tour_phases:
+                player_details.append({
+                    "tournament_name": tour.name,
+                    "tournament_weight": t_weight,
+                    "phases": current_tour_phases,
+                    "total_tournament_points": round(final_tour_points, 2)
+                })
 
         should_add = False
         if params.tournament_id is None:
@@ -286,7 +275,7 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
                 team_name=player.team.name if player.team else "No Team",
                 total_points=int(round(total_points)),
                 photo_url=player.photo_url,
-                details=player_details  # NOWE: Przekazujemy szczegóły
+                details=player_details
             ))
 
     ranking.sort(key=lambda x: x.total_points, reverse=True)
@@ -300,7 +289,6 @@ def get_ranking_presets(db: Session = Depends(get_db)):
 
 @router.post("/api/ranking-presets/", response_model=schemas.CustomRankingPreset)
 def create_ranking_preset(preset: schemas.CustomRankingPresetCreate, db: Session = Depends(get_db)):
-    # Jeśli preset o takiej nazwie istnieje, nadpisujemy go
     existing = db.query(models.CustomRankingPreset).filter(models.CustomRankingPreset.name == preset.name).first()
     if existing:
         existing.settings = preset.settings
@@ -308,7 +296,6 @@ def create_ranking_preset(preset: schemas.CustomRankingPresetCreate, db: Session
         db.refresh(existing)
         return existing
 
-    # W przeciwnym razie tworzymy nowy
     db_preset = models.CustomRankingPreset(name=preset.name, settings=preset.settings)
     db.add(db_preset)
     db.commit()
