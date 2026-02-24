@@ -151,7 +151,7 @@
         </div>
 
         <div style="overflow-x: auto;">
-            <table class="table">
+            <table class="table compact-table">
                 <thead>
                     <tr>
                         <th>Gracz</th>
@@ -181,28 +181,28 @@
                         data-in-third="{{ 'true' if p_info and p_info.in_third_place else 'false' }}">
 
                         <td class="player-name-cell"><div style="font-weight: bold;">{{ player.nickname }}</div></td>
-                        <td class="team-name-cell" style="font-size: 0.8rem;">{{ player.team.name }}</td>
+                        <td class="team-name-cell" style="font-size: 0.8rem; color: #666;">{{ player.team.name }}</td>
 
-                        <td class="col-group"><input type="number" step="0.01" class="rating-input" data-field="rating_group" value="{{ perf.rating_group if perf and perf.rating_group is not none else '' }}" style="width: 65px; padding: 4px;"></td>
+                        <td class="col-group"><input type="number" step="0.01" class="rating-input" data-field="rating_group" value="{{ perf.rating_group if perf and perf.rating_group is not none else '' }}" style="width: 55px;"></td>
 
                         <td class="col-quarters" style="text-align: center;">
                             {% if player.team_id in semis_team_ids %}
-                                <span style="font-size: 0.8rem; color: #ccc; font-style: italic;">Skip</span>
+                                <span style="font-size: 0.75rem; color: #ccc; font-style: italic;">Skip</span>
                                 <input type="hidden" class="rating-input" data-field="rating_quarters" value="">
                             {% else %}
-                                <input type="number" step="0.01" class="rating-input" data-field="rating_quarters" value="{{ perf.rating_quarters if perf and perf.rating_quarters is not none else '' }}" style="width: 65px; padding: 4px;">
+                                <input type="number" step="0.01" class="rating-input" data-field="rating_quarters" value="{{ perf.rating_quarters if perf and perf.rating_quarters is not none else '' }}" style="width: 55px;">
                             {% endif %}
                         </td>
 
-                        <td class="col-semis"><input type="number" step="0.01" class="rating-input" data-field="rating_semis" value="{{ perf.rating_semis if perf and perf.rating_semis is not none else '' }}" style="width: 65px; padding: 4px;"></td>
-                        <td class="col-final"><input type="number" step="0.01" class="rating-input" data-field="rating_final" value="{{ perf.rating_final if perf and perf.rating_final is not none else '' }}" style="width: 65px; padding: 4px;"></td>
+                        <td class="col-semis"><input type="number" step="0.01" class="rating-input" data-field="rating_semis" value="{{ perf.rating_semis if perf and perf.rating_semis is not none else '' }}" style="width: 55px;"></td>
+                        <td class="col-final"><input type="number" step="0.01" class="rating-input" data-field="rating_final" value="{{ perf.rating_final if perf and perf.rating_final is not none else '' }}" style="width: 55px;"></td>
 
                         {% if tournament.has_third_place %}
-                        <td class="col-third"><input type="number" step="0.01" class="rating-input" data-field="rating_third_place" value="{{ perf.rating_third_place if perf and perf.rating_third_place is not none else '' }}" style="width: 65px; padding: 4px; border-color: #d35400;"></td>
+                        <td class="col-third"><input type="number" step="0.01" class="rating-input" data-field="rating_third_place" value="{{ perf.rating_third_place if perf and perf.rating_third_place is not none else '' }}" style="width: 55px; border-color: #d35400;"></td>
                         {% endif %}
 
-                        <td>
-                            <button onclick="saveRating({{ player.id }})" class="btn individual-rating-save" style="background: #bdc3c7; color: #333; padding: 4px 8px; font-size: 0.75rem;" title="Zapisz tylko tego gracza">Zapisz</button>
+                        <td style="text-align: right;">
+                            <button onclick="saveRating({{ player.id }})" class="btn individual-rating-save" style="background: #bdc3c7; color: #333;" title="Zapisz tylko tego gracza">Zapisz</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -214,6 +214,26 @@
 </div>
 
 <style>
+    /* ZMIANA: Kompaktowa tabela dla ratingów */
+    .compact-table th, .compact-table td {
+        padding: 3px 6px !important;
+        vertical-align: middle !important;
+    }
+
+    .compact-table .rating-input {
+        padding: 2px 4px !important;
+        height: 24px !important;
+        font-size: 0.85rem !important;
+        margin: 0 !important;
+    }
+
+    .compact-table .individual-rating-save {
+        padding: 2px 8px !important;
+        height: 24px !important;
+        line-height: 1 !important;
+        font-size: 0.75rem !important;
+    }
+
     .tab-btn {
         background: #ecf0f1;
         color: #555;
@@ -239,10 +259,8 @@
 <script>
     const TOURNAMENT_ID = {{ tournament.id }};
 
-    // Zmienna globalna przechowująca informację, która zakładka jest aktywna
     let currentPhaseFilter = 'all';
 
-    // --- ZINTEGROWANY SYSTEM FILTROWANIA (Zakładki + Wyszukiwarka) ---
     function applyFilters() {
         const searchInput = document.getElementById('playerTeamSearchInput').value.toLowerCase();
         const rows = document.querySelectorAll('.player-rating-row');
@@ -251,12 +269,10 @@
         rows.forEach(row => {
             let showRow = true;
 
-            // 1. Sprawdzenie aktywnej zakładki (Fazy)
             if (currentPhaseFilter !== 'all') {
                 showRow = row.getAttribute('data-in-' + currentPhaseFilter) === 'true';
             }
 
-            // 2. Sprawdzenie tekstu wyszukiwania (jeśli wiersz przeszedł filtr fazy)
             if (showRow && searchInput.trim() !== '') {
                 const playerName = row.querySelector('.player-name-cell').textContent.toLowerCase();
                 const teamName = row.querySelector('.team-name-cell').textContent.toLowerCase();
@@ -266,25 +282,20 @@
                 }
             }
 
-            // Aktualizacja widoczności wiersza
             row.style.display = showRow ? '' : 'none';
             if (showRow) visibleCount++;
         });
 
-        // Pokaż/ukryj komunikat o braku wyników
         const noResultsMsg = document.getElementById('noResultsMsg');
         if (noResultsMsg) {
             noResultsMsg.style.display = (visibleCount === 0 && rows.length > 0) ? "block" : "none";
         }
     }
 
-    // Wywoływana po kliknięciu w zakładkę (Grupa, QF, SF itd.)
     function filterPhase(phase) {
-        // Aktualizacja stylów przycisków
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab'));
         document.getElementById('btn-filter-' + phase).classList.add('active-tab');
 
-        // Ukrywanie/Pokazywanie KOLUMN w tabeli
         const phases = ['group', 'quarters', 'semis', 'final', 'third'];
         phases.forEach(ph => {
             const showCol = (phase === 'all' || phase === ph);
@@ -293,15 +304,12 @@
             });
         });
 
-        // Ustawienie globalnej zmiennej fazy i odpalenie pełnego filtru
         currentPhaseFilter = phase;
         applyFilters();
     }
 
 
-    // --- Włączanie i wyłączanie inputów w zależności od checkboxa ---
     function togglePhaseInputs(teamId, phaseBase, isChecked) {
-        // 1. Zmiana dla inputa ilości rund
         const teamForm = document.querySelector(`.team-stats-form[data-team-id="${teamId}"]`);
         if (teamForm) {
             const roundInput = teamForm.querySelector(`input[name="rounds_${phaseBase}"]`);
@@ -316,7 +324,6 @@
             }
         }
 
-        // 2. Zmiana dla inputów z ratingami zawodników w tej drużynie
         const playerRows = document.querySelectorAll(`.player-rating-row[data-team-id="${teamId}"]`);
         playerRows.forEach(row => {
             const ratingInput = row.querySelector(`input[data-field="rating_${phaseBase}"]`);
@@ -330,17 +337,14 @@
                 }
             }
 
-            // Aktualizacja atrybutu (potrzebne do filtrowania w locie)
             let filterPhaseName = phaseBase;
             if (phaseBase === 'third_place') filterPhaseName = 'third';
             row.setAttribute(`data-in-${filterPhaseName}`, isChecked ? 'true' : 'false');
         });
 
-        // Jeśli jakaś zakładka jest obecnie włączona, zaktualizuj widok natychmiast
         applyFilters();
     }
 
-    // Odpalamy logikę wyszarzania dla wszystkich przy starcie, aby zablokować to, co odznaczone
     window.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.phase-checkbox').forEach(cb => {
             const teamId = cb.getAttribute('data-team-id');
