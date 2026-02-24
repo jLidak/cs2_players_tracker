@@ -72,25 +72,43 @@ class Tournament(TournamentBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
 
+
 class AddTeamToTournament(BaseModel):
     team_id: int
     starts_in_semis: bool = False
+
+    # Dodane:
+    in_group: bool = True
+    in_quarters: bool = False
+    in_semis: bool = False
+    in_final: bool = False
+    in_third_place: bool = False
+
     rounds_group: int = 1
     rounds_quarters: int = 0
     rounds_semis: int = 0
     rounds_final: int = 0
     rounds_third_place: int = 0
 
+
 class TournamentTeam(BaseModel):
     id: int
     tournament_id: int
     team_id: int
     starts_in_semis: bool
-    model_config = ConfigDict(from_attributes=True)
+
+    # Dodane:
+    in_group: bool
+    in_quarters: bool
+    in_semis: bool
+    in_final: bool
+    in_third_place: bool
+
     rounds_group: int
     rounds_quarters: int
     rounds_semis: int
     rounds_final: int
+    rounds_third_place: int
     model_config = ConfigDict(from_attributes=True)
 
 # --- PERFORMANCE ---

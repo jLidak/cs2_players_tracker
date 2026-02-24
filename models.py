@@ -70,6 +70,13 @@ class TournamentTeam(Base):
     team_id: Mapped[int] = mapped_column(Integer, ForeignKey("teams.id"), nullable=False)
     starts_in_semis: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # NOWE KOLUMNY: Czy drużyna gra w danej fazie
+    in_group = Column(Boolean, default=True)
+    in_quarters = Column(Boolean, default=False)
+    in_semis = Column(Boolean, default=False)
+    in_final = Column(Boolean, default=False)
+    in_third_place = Column(Boolean, default=False)
+
     rounds_group: Mapped[int] = mapped_column(Integer, default=1)
     rounds_quarters: Mapped[int] = mapped_column(Integer, default=1)
     rounds_semis: Mapped[int] = mapped_column(Integer, default=1)

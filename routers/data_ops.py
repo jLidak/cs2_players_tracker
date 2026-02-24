@@ -55,6 +55,7 @@ def export_database(db: Session = Depends(get_db)):
     json_str = export_data.model_dump_json(indent=2)
     return Response(content=json_str, media_type="application/json", headers={"Content-Disposition": "attachment; filename=full_backup.json"})
 
+
 @router.post("/api/import")
 async def import_database(file: UploadFile = File(...), db: Session = Depends(get_db)):
     try:
@@ -63,25 +64,47 @@ async def import_database(file: UploadFile = File(...), db: Session = Depends(ge
         clear_all_tables(db)
 
         for item in data.get("teams", []): db.add(models.Team(**item))
-        for item in data.get("tournaments", []): db.add(models.Tournament(**item))
+
+        # --- ZMIANA: Obsługa daty dla turniejów ---
+        for item in data.get("tournaments", []):
+            # Jeśli data istnieje i jest tekstem, zamień ją na obiekt daty
+            if "start_date" in item and isinstance(item["start_date"], str):
+                item["start_date"] = date_type.fromisoformat(item["start_date"])
+            db.add(models.Tournament(**item))
+
         db.commit()
         for item in data.get("players", []): db.add(models.Player(**item))
         db.commit()
-        for item in data.get("tournament_teams", []): db.add(models.TournamentTeam(**item))
+
+        # --- ZMIANA: Obsługa booleanów i nowych faz dla drużyn w turniejach ---
+        for item in data.get("tournament_teams", []):
+            # Jeśli w starym backupie brakuje nowych kolumn (in_group, in_quarters itp.),
+            # ustawiamy wartości domyślne, żeby baza nie odrzuciła wpisu
+            if "in_group" not in item:
+                starts_semis = item.get("starts_in_semis", False)
+                item["in_group"] = not starts_semis
+                item["in_quarters"] = False
+                item["in_semis"] = starts_semis
+                item["in_final"] = False
+                item["in_third_place"] = False
+            db.add(models.TournamentTeam(**item))
+
         for item in data.get("player_performances", []): db.add(models.PlayerTournamentPerformance(**item))
         db.commit()
+
         for item in data.get("matches", []):
             if isinstance(item["date"], str): item["date"] = date_type.fromisoformat(item["date"])
             db.add(models.Match(**item))
         db.commit()
+
         for item in data.get("maps", []): db.add(models.Map(**item))
         for item in data.get("player_ratings", []): db.add(models.PlayerRating(**item))
         db.commit()
+
         return {"message": "Baza przywrócona z pliku."}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Błąd importu: {str(e)}")
-
 @router.post("/api/import/auto-from-files")
 def import_auto_from_files(db: Session = Depends(get_db)):
     base_folder = "json_import_files"

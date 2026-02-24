@@ -77,12 +77,13 @@ def tournament_details(request: Request, tournament_id: int, db: Session = Depen
         models.PlayerTournamentPerformance.tournament_id == tournament_id
     ).all()
     perfs_dict = {p.player_id: p for p in perfs}
-
+    participations_dict = {p.team_id: p for p in participations}
     return templates.TemplateResponse("tournament_details.html", {
         "request": request,
         "tournament": tournament,
         "all_teams": all_teams,
         "participations": participations,
+        "participations_dict": participations_dict,
         "players": players,
         "perfs_dict": perfs_dict,
         "semis_team_ids": semis_team_ids # Przekazujemy do szablonu

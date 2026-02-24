@@ -145,6 +145,12 @@ def add_team_to_tournament(
     if exists:
         # Aktualizacja istniejącego wpisu
         exists.starts_in_semis = data.starts_in_semis
+        exists.in_group = data.in_group
+        exists.in_quarters = data.in_quarters
+        exists.in_semis = data.in_semis
+        exists.in_final = data.in_final
+        exists.in_third_place = data.in_third_place
+
         exists.rounds_group = data.rounds_group
         exists.rounds_quarters = data.rounds_quarters
         exists.rounds_semis = data.rounds_semis
@@ -156,11 +162,16 @@ def add_team_to_tournament(
             tournament_id=tournament_id,
             team_id=data.team_id,
             starts_in_semis=data.starts_in_semis,
+            in_group=data.in_group,
+            in_quarters=data.in_quarters,
+            in_semis=data.in_semis,
+            in_final=data.in_final,
+            in_third_place=data.in_third_place,
             rounds_group=data.rounds_group,
             rounds_quarters=data.rounds_quarters,
             rounds_semis=data.rounds_semis,
             rounds_final=data.rounds_final,
-            rounds_third_place = data.rounds_third_place
+            rounds_third_place=data.rounds_third_place
         )
         db.add(new_entry)
 
