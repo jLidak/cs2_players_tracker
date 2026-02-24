@@ -40,23 +40,9 @@
     <div class="card">
         <h3>Uczestnicy (Awanse i Rundy)</h3>
 
-        <div style="background: #f1f1f1; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-            <strong style="display:block; margin-bottom:5px;">Dodaj nową drużynę:</strong>
-            <form onsubmit="addTeam(event)" style="display: flex; gap: 5px; flex-wrap: wrap;">
-                <select name="team_id" style="flex-grow: 1; padding: 5px;">
-                    {% for team in all_teams %}
-                    <option value="{{ team.id }}">{{ team.name }}</option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="btn" style="font-size: 0.8rem;">Dodaj</button>
-
-                {% if tournament.bracket_type == "Bracket 6 teams" %}
-                <div style="width: 100%; margin-top: 5px;">
-                    <input type="checkbox" name="starts_in_semis" id="semisCheck">
-                    <label for="semisCheck">Start w półfinale (Skip QF)</label>
-                </div>
-                {% endif %}
-            </form>
+        <div style="background: #f1f1f1; padding: 10px; border-radius: 5px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+            <strong style="margin: 0; font-size: 0.95rem;">Zarządzaj zespołami:</strong>
+            <button onclick="openAddTeamsModal()" class="btn" style="background: #3498db; font-size: 0.85rem; padding: 6px 12px;">➕ Dodaj drużyny</button>
         </div>
 
         <ul style="list-style: none; padding: 0;">
@@ -213,6 +199,50 @@
     </div>
 </div>
 
+<div id="addTeamsModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+    <div style="background: white; padding: 20px; border-radius: 8px; width: 500px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 style="margin: 0;">Wybierz drużyny</h2>
+            <button onclick="closeAddTeamsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+
+        <input type="text" id="addTeamSearchInput" onkeyup="filterAddTeams()" placeholder="🔍 Filtruj drużyny po nazwie..." style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; width: 100%; outline: none; margin-bottom: 15px;">
+
+        <div id="addTeamsList" style="flex-grow: 1; overflow-y: auto; border: 1px solid #eee; border-radius: 5px; padding: 10px; margin-bottom: 15px; min-height: 200px;">
+            {% for team in all_teams %}
+                {% if team.id not in participations_dict %}
+                <div class="add-team-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #f9f9f9;">
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; font-weight: 600;">
+                        <input type="checkbox" class="modal-team-checkbox" value="{{ team.id }}">
+                        <span class="modal-team-name">{{ team.name }}</span>
+                    </label>
+                    <span style="font-size: 0.8rem; color: #7f8c8d; white-space: nowrap;">
+                        Rank: <strong style="color: #2c3e50;">{{ team_points.get(team.name, 0) | int }} pkt</strong>
+                    </span>
+                </div>
+                {% endif %}
+            {% endfor %}
+            {% if (all_teams|length) == (participations_dict|length) %}
+                <p style="text-align: center; color: #999; margin-top: 20px;">Wszystkie drużyny z bazy biorą już udział w tym turnieju.</p>
+            {% endif %}
+        </div>
+
+        {% if tournament.bracket_type == "Bracket 6 teams" %}
+        <div style="margin-bottom: 15px; background: #e8f6f3; padding: 10px; border-radius: 5px;">
+            <input type="checkbox" id="modalSemisCheck">
+            <label for="modalSemisCheck" style="font-weight: bold; color: #16a085;">Zaznaczone drużyny startują w półfinale (Skip QF)</label>
+        </div>
+        {% endif %}
+
+        <div style="text-align: right; margin-top: auto;">
+            <button onclick="closeAddTeamsModal()" class="btn" style="background: #95a5a6; margin-right: 10px;">Anuluj</button>
+            <button onclick="submitAddTeams()" id="submitAddTeamsBtn" class="btn" style="background: #27ae60;">Dodaj zaznaczone</button>
+        </div>
+    </div>
+</div>
+
+
 <style>
     .compact-table th, .compact-table td {
         padding: 3px 6px !important;
@@ -257,6 +287,90 @@
 {% block extra_script %}
 <script>
     const TOURNAMENT_ID = {{ tournament.id }};
+
+    // --- ZARZĄDZANIE MODALEM DODAWANIA DRUŻYN ---
+    function openAddTeamsModal() {
+        document.getElementById('addTeamsModal').style.display = 'flex';
+        document.getElementById('addTeamSearchInput').value = '';
+        filterAddTeams();
+    }
+
+    function closeAddTeamsModal() {
+        document.getElementById('addTeamsModal').style.display = 'none';
+        // Odznaczamy wszystkie checkboxy przy zamykaniu
+        document.querySelectorAll('.modal-team-checkbox').forEach(cb => cb.checked = false);
+    }
+
+    function filterAddTeams() {
+        const filter = document.getElementById('addTeamSearchInput').value.toLowerCase();
+        const items = document.querySelectorAll('.add-team-item');
+
+        items.forEach(item => {
+            const teamName = item.querySelector('.modal-team-name').textContent.toLowerCase();
+            if (teamName.includes(filter)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    async function submitAddTeams() {
+        const checkboxes = document.querySelectorAll('.modal-team-checkbox:checked');
+        if (checkboxes.length === 0) {
+            alert("Najpierw zaznacz drużyny do dodania z listy.");
+            return;
+        }
+
+        const btn = document.getElementById('submitAddTeamsBtn');
+        const originalText = btn.innerText;
+        btn.innerText = "⏳ Dodawanie...";
+        btn.disabled = true;
+
+        const semisCheck = document.getElementById('modalSemisCheck');
+        const startsInSemis = semisCheck ? semisCheck.checked : false;
+
+        // Tworzymy asynchroniczne żądanie do API dla każdej zaznaczonej drużyny (Multi-Submit)
+        const promises = Array.from(checkboxes).map(cb => {
+            return fetch(`/api/tournaments/${TOURNAMENT_ID}/add_team`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    team_id: parseInt(cb.value),
+                    starts_in_semis: startsInSemis,
+                    in_group: !startsInSemis,
+                    in_quarters: false,
+                    in_semis: startsInSemis,
+                    in_final: false,
+                    in_third_place: false,
+                    rounds_group: 0,
+                    rounds_quarters: 0,
+                    rounds_semis: 0,
+                    rounds_final: 0,
+                    rounds_third_place: 0
+                })
+            });
+        });
+
+        try {
+            await Promise.all(promises);
+            window.location.reload(); // Odśwież widok, żeby ukazać nowe drużyny w tabelach
+        } catch (e) {
+            console.error(e);
+            alert("Wystąpił błąd sieci podczas dodawania drużyn.");
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    // Zamknij modal po kliknięciu w szare tło (poza panelem)
+    window.onclick = function(event) {
+        const modal = document.getElementById('addTeamsModal');
+        if (event.target == modal) {
+            closeAddTeamsModal();
+        }
+    }
+
 
     let currentPhaseFilter = 'all';
 
@@ -352,8 +466,6 @@
             const teamId = cb.getAttribute('data-team-id');
             const phase = cb.getAttribute('data-phase');
 
-            // Inteligentna naprawa starych danych: Jeśli w bazie ten etap jest odznaczony,
-            // ale drużyna ma wpisane jakiekolwiek rundy LUB którykolwiek gracz ma wpisany rating -> wymuś zaznaczenie checkboxa!
             let hasData = false;
 
             const teamForm = document.querySelector(`.team-stats-form[data-team-id="${teamId}"]`);
@@ -372,54 +484,16 @@
                 }
             });
 
-            // Jeśli istnieją dane z przeszłości, ratujemy je przed ukryciem
             if (hasData && !cb.checked) {
                 cb.checked = true;
             }
 
-            // Aplikujemy ostateczny wygląd wizualny (skipFilter przyspiesza ładowanie, odświeżymy na końcu)
             togglePhaseInputs(teamId, phase, cb.checked, true);
         });
 
-        applyFilters(); // Odśwież widok raz na końcu
+        applyFilters();
     });
 
-    async function addTeam(event) {
-        event.preventDefault();
-        const form = event.target;
-        const teamId = form.team_id.value;
-        let startsInSemis = form.starts_in_semis ? form.starts_in_semis.checked : false;
-
-        try {
-            const response = await fetch(`/api/tournaments/${TOURNAMENT_ID}/add_team`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    team_id: parseInt(teamId),
-                    starts_in_semis: startsInSemis,
-                    in_group: !startsInSemis,
-                    in_quarters: false,
-                    in_semis: startsInSemis,
-                    in_final: false,
-                    in_third_place: false,
-                    rounds_group: 0,
-                    rounds_quarters: 0,
-                    rounds_semis: 0,
-                    rounds_final: 0,
-                    rounds_third_place: 0
-                })
-            });
-
-            if (response.ok) {
-                window.location.reload();
-            } else {
-                alert("Błąd dodawania drużyny");
-            }
-        } catch (e) {
-            console.error(e);
-            alert("Błąd połączenia");
-        }
-    }
 
     async function removeTeam(teamId) {
         if (!confirm("Czy na pewno usunąć tę drużynę? Usunie to również wpisane wyniki jej graczy!")) return;

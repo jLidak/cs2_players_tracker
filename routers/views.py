@@ -48,36 +48,54 @@ def tournaments_page(request: Request, db: Session = Depends(get_db)):
 @router.get("/tournament/{tournament_id}", response_class=HTMLResponse)
 def tournament_details(request: Request, tournament_id: int, db: Session = Depends(get_db)):
     """
-    Szczegóły turnieju.
+    Szczegóły turnieju z zaawansowanym sortowaniem wg punktów rankingu.
     """
     tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
 
-    all_teams = db.query(models.Team).order_by(models.Team.name).all()
+    # --- 1. OBLICZANIE SIŁY DRUŻYN (Suma punktów graczy z głównego rankingu) ---
+    ranking_data = get_ranking(db=db)
+    team_points = {}
+    for entry in ranking_data:
+        if entry.team_name and entry.team_name != "No Team":
+            team_points[entry.team_name] = team_points.get(entry.team_name, 0) + entry.total_points
 
-    # Drużyny w turnieju
+    # --- 2. POBRANIE I SORTOWANIE WSZYSTKICH DRUŻYN (do Modala) ---
+    all_teams = db.query(models.Team).all()
+    # Sortowanie podwójne: najpierw alfabetycznie, potem malejąco po punktach (zachowuje stabilność)
+    all_teams.sort(key=lambda t: t.name)
+    all_teams.sort(key=lambda t: team_points.get(t.name, 0), reverse=True)
+
+    # --- 3. POBRANIE I SORTOWANIE DRUŻYN UCZESTNICZĄCYCH ---
     participations = db.query(models.TournamentTeam).options(
         joinedload(models.TournamentTeam.team)
     ).filter(
         models.TournamentTeam.tournament_id == tournament_id
     ).all()
 
+    participations.sort(key=lambda p: p.team.name)
+    participations.sort(key=lambda p: team_points.get(p.team.name, 0), reverse=True)
+
     participating_team_ids = [p.team_id for p in participations]
-
-    # --- Lista ID drużyn, które zaczynają od półfinału ---
     semis_team_ids = {p.team_id for p in participations if p.starts_in_semis}
-    # -------------------------------------------------------------
 
+    # --- 4. POBRANIE I SORTOWANIE GRACZY ---
     players = db.query(models.Player).options(joinedload(models.Player.team)).filter(
         models.Player.team_id.in_(participating_team_ids)
-    ).order_by(models.Player.team_id).all()
+    ).all()
+
+    # Gracze są sortowani najpierw po sile drużyny (żeby trzymali się razem), a potem po nicku
+    players.sort(key=lambda p: p.nickname)
+    players.sort(key=lambda p: team_points.get(p.team.name, 0) if p.team else 0, reverse=True)
 
     perfs = db.query(models.PlayerTournamentPerformance).filter(
         models.PlayerTournamentPerformance.tournament_id == tournament_id
     ).all()
     perfs_dict = {p.player_id: p for p in perfs}
+
     participations_dict = {p.team_id: p for p in participations}
+
     return templates.TemplateResponse("tournament_details.html", {
         "request": request,
         "tournament": tournament,
@@ -86,9 +104,9 @@ def tournament_details(request: Request, tournament_id: int, db: Session = Depen
         "participations_dict": participations_dict,
         "players": players,
         "perfs_dict": perfs_dict,
-        "semis_team_ids": semis_team_ids # Przekazujemy do szablonu
+        "semis_team_ids": semis_team_ids,
+        "team_points": team_points  # Przekazujemy punkty do widoku
     })
-
 
 @router.get("/teams", response_class=HTMLResponse)
 def teams_page(request: Request, db: Session = Depends(get_db)):
