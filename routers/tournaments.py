@@ -4,7 +4,7 @@ Obsługa turniejów: Tworzenie, edycja, usuwanie, dodawanie drużyn, wpisywanie 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError  # <--- NOWY IMPORT
+from sqlalchemy.exc import IntegrityError
 import models
 import schemas
 from database import get_db
@@ -49,7 +49,6 @@ def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depend
     db_tournament = models.Tournament(**tournament.model_dump())
     db.add(db_tournament)
 
-    # 3. Zapis do bazy z obsługą błędu (np. duplikatu nazwy)
     try:
         db.commit()
         db.refresh(db_tournament)
@@ -61,12 +60,10 @@ def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depend
 
 @router.put("/api/tournaments/{tournament_id}", response_model=schemas.Tournament)
 def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Session = Depends(get_db)):
-    """Aktualizuje dane turnieju z walidacją sumy wag."""
     tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
 
-    # 1. Walidacja standardowych wag
     weights_to_check = ['weight_group', 'weight_quarters', 'weight_semis', 'weight_final']
     if any(getattr(data, w) is not None for w in weights_to_check):
         proposed_weights = {}
@@ -81,7 +78,6 @@ def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Se
                 detail=f"Błąd walidacji: Suma wag faz musi wynosić 1.0. Twoje zmiany dają sumę: {total:.2f}"
             )
 
-    # 2. Walidacja wag dla ścieżki skróconej (Bracket 6)
     effective_bracket_type = data.bracket_type if data.bracket_type is not None else tournament.bracket_type
 
     if effective_bracket_type == "Bracket 6 teams":
@@ -104,7 +100,6 @@ def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Se
                     detail=f"Suma wag dla ścieżki skróconej musi wynosić 1.0. Obecnie wynosi: {total_override:.2f}"
                 )
 
-    # Aktualizacja pól w bazie
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(tournament, key, value)
@@ -143,7 +138,6 @@ def add_team_to_tournament(
     ).first()
 
     if exists:
-        # Aktualizacja istniejącego wpisu
         exists.starts_in_semis = data.starts_in_semis
         exists.in_group = data.in_group
         exists.in_quarters = data.in_quarters
@@ -157,7 +151,6 @@ def add_team_to_tournament(
         exists.rounds_final = data.rounds_final
         exists.rounds_third_place = data.rounds_third_place
     else:
-        # Tworzenie nowego wpisu
         new_entry = models.TournamentTeam(
             tournament_id=tournament_id,
             team_id=data.team_id,
@@ -189,11 +182,13 @@ def set_player_performance(
     ).first()
 
     if existing:
-        if perf.rating_group is not None: existing.rating_group = perf.rating_group
-        if perf.rating_quarters is not None: existing.rating_quarters = perf.rating_quarters
-        if perf.rating_semis is not None: existing.rating_semis = perf.rating_semis
-        if perf.rating_final is not None: existing.rating_final = perf.rating_final
-        if perf.rating_third_place is not None: existing.rating_third_place = perf.rating_third_place
+        # ZMIANA: Twarde nadpisywanie pozwala na resetowanie ocen do null
+        existing.rating_group = perf.rating_group
+        existing.rating_quarters = perf.rating_quarters
+        existing.rating_semis = perf.rating_semis
+        existing.rating_final = perf.rating_final
+        existing.rating_third_place = perf.rating_third_place
+
         db.commit()
         db.refresh(existing)
         return existing

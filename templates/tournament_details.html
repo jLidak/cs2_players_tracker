@@ -76,7 +76,7 @@
 
                     <div style="text-align: center;">
                         <label style="font-size: 0.65rem; display:flex; align-items:center; justify-content:center; gap:3px; color: #555; cursor:pointer;">
-                            <input type="checkbox" name="in_group" {% if p.in_group %}checked{% endif %}> Grp
+                            <input type="checkbox" name="in_group" {% if p.in_group %}checked{% endif %} class="phase-checkbox" data-team-id="{{ p.team.id }}" data-phase="group" onchange="togglePhaseInputs({{ p.team.id }}, 'group', this.checked)"> Grp
                         </label>
                         <input type="number" name="rounds_group" value="{{ p.rounds_group }}" min="0" style="width: 45px; padding: 3px; text-align: center; font-size: 0.9rem;">
                     </div>
@@ -92,7 +92,7 @@
                     {% else %}
                         <div style="text-align: center;">
                             <label style="font-size: 0.65rem; display:flex; align-items:center; justify-content:center; gap:3px; color: #555; cursor:pointer;">
-                                <input type="checkbox" name="in_quarters" {% if p.in_quarters %}checked{% endif %}> QF
+                                <input type="checkbox" name="in_quarters" {% if p.in_quarters %}checked{% endif %} class="phase-checkbox" data-team-id="{{ p.team.id }}" data-phase="quarters" onchange="togglePhaseInputs({{ p.team.id }}, 'quarters', this.checked)"> QF
                             </label>
                             <input type="number" name="rounds_quarters" value="{{ p.rounds_quarters }}" min="0" style="width: 45px; padding: 3px; text-align: center; font-size: 0.9rem;">
                         </div>
@@ -100,14 +100,14 @@
 
                     <div style="text-align: center;">
                         <label style="font-size: 0.65rem; display:flex; align-items:center; justify-content:center; gap:3px; color: #555; cursor:pointer;">
-                            <input type="checkbox" name="in_semis" {% if p.in_semis %}checked{% endif %}> SF
+                            <input type="checkbox" name="in_semis" {% if p.in_semis %}checked{% endif %} class="phase-checkbox" data-team-id="{{ p.team.id }}" data-phase="semis" onchange="togglePhaseInputs({{ p.team.id }}, 'semis', this.checked)"> SF
                         </label>
                         <input type="number" name="rounds_semis" value="{{ p.rounds_semis }}" min="0" style="width: 45px; padding: 3px; text-align: center; font-size: 0.9rem;">
                     </div>
 
                     <div style="text-align: center;">
                         <label style="font-size: 0.65rem; display:flex; align-items:center; justify-content:center; gap:3px; color: #555; cursor:pointer;">
-                            <input type="checkbox" name="in_final" {% if p.in_final %}checked{% endif %}> Fin
+                            <input type="checkbox" name="in_final" {% if p.in_final %}checked{% endif %} class="phase-checkbox" data-team-id="{{ p.team.id }}" data-phase="final" onchange="togglePhaseInputs({{ p.team.id }}, 'final', this.checked)"> Fin
                         </label>
                         <input type="number" name="rounds_final" value="{{ p.rounds_final }}" min="0" style="width: 45px; padding: 3px; text-align: center; font-size: 0.9rem;">
                     </div>
@@ -115,7 +115,7 @@
                     {% if tournament.has_third_place %}
                     <div style="text-align: center;">
                         <label style="font-size: 0.65rem; display:flex; align-items:center; justify-content:center; gap:3px; color: #d35400; cursor:pointer;">
-                            <input type="checkbox" name="in_third_place" {% if p.in_third_place %}checked{% endif %}> 3rd
+                            <input type="checkbox" name="in_third_place" {% if p.in_third_place %}checked{% endif %} class="phase-checkbox" data-team-id="{{ p.team.id }}" data-phase="third_place" onchange="togglePhaseInputs({{ p.team.id }}, 'third_place', this.checked)"> 3rd
                         </label>
                         <input type="number" name="rounds_third_place" value="{{ p.rounds_third_place }}" min="0" style="width: 45px; padding: 3px; text-align: center; border: 1px solid #d35400; font-size: 0.9rem;">
                     </div>
@@ -170,6 +170,7 @@
 
                     <tr id="row-{{ player.id }}" class="player-rating-row"
                         data-player-id="{{ player.id }}"
+                        data-team-id="{{ player.team_id }}"
                         data-in-group="{{ 'true' if p_info and p_info.in_group else 'false' }}"
                         data-in-quarters="{{ 'true' if p_info and p_info.in_quarters else 'false' }}"
                         data-in-semis="{{ 'true' if p_info and p_info.in_semis else 'false' }}"
@@ -179,22 +180,22 @@
                         <td><div style="font-weight: bold;">{{ player.nickname }}</div></td>
                         <td style="font-size: 0.8rem;">{{ player.team.name }}</td>
 
-                        <td class="col-group"><input type="number" step="0.01" class="rating-input" data-field="rating_group" value="{{ perf.rating_group if perf and perf.rating_group else '' }}" style="width: 65px; padding: 4px;"></td>
+                        <td class="col-group"><input type="number" step="0.01" class="rating-input" data-field="rating_group" value="{{ perf.rating_group if perf and perf.rating_group is not none else '' }}" style="width: 65px; padding: 4px;"></td>
 
                         <td class="col-quarters" style="text-align: center;">
                             {% if player.team_id in semis_team_ids %}
                                 <span style="font-size: 0.8rem; color: #ccc; font-style: italic;">Skip</span>
                                 <input type="hidden" class="rating-input" data-field="rating_quarters" value="">
                             {% else %}
-                                <input type="number" step="0.01" class="rating-input" data-field="rating_quarters" value="{{ perf.rating_quarters if perf and perf.rating_quarters else '' }}" style="width: 65px; padding: 4px;">
+                                <input type="number" step="0.01" class="rating-input" data-field="rating_quarters" value="{{ perf.rating_quarters if perf and perf.rating_quarters is not none else '' }}" style="width: 65px; padding: 4px;">
                             {% endif %}
                         </td>
 
-                        <td class="col-semis"><input type="number" step="0.01" class="rating-input" data-field="rating_semis" value="{{ perf.rating_semis if perf and perf.rating_semis else '' }}" style="width: 65px; padding: 4px;"></td>
-                        <td class="col-final"><input type="number" step="0.01" class="rating-input" data-field="rating_final" value="{{ perf.rating_final if perf and perf.rating_final else '' }}" style="width: 65px; padding: 4px;"></td>
+                        <td class="col-semis"><input type="number" step="0.01" class="rating-input" data-field="rating_semis" value="{{ perf.rating_semis if perf and perf.rating_semis is not none else '' }}" style="width: 65px; padding: 4px;"></td>
+                        <td class="col-final"><input type="number" step="0.01" class="rating-input" data-field="rating_final" value="{{ perf.rating_final if perf and perf.rating_final is not none else '' }}" style="width: 65px; padding: 4px;"></td>
 
                         {% if tournament.has_third_place %}
-                        <td class="col-third"><input type="number" step="0.01" class="rating-input" data-field="rating_third_place" value="{{ perf.rating_third_place if perf and perf.rating_third_place else '' }}" style="width: 65px; padding: 4px; border-color: #d35400;"></td>
+                        <td class="col-third"><input type="number" step="0.01" class="rating-input" data-field="rating_third_place" value="{{ perf.rating_third_place if perf and perf.rating_third_place is not none else '' }}" style="width: 65px; padding: 4px; border-color: #d35400;"></td>
                         {% endif %}
 
                         <td>
@@ -209,7 +210,6 @@
 </div>
 
 <style>
-    /* CSS dla ZAKŁADEK */
     .tab-btn {
         background: #ecf0f1;
         color: #555;
@@ -235,13 +235,58 @@
 <script>
     const TOURNAMENT_ID = {{ tournament.id }};
 
-    // --- FILTROWANIE FAZ (ZAKŁADKI) ---
+    // --- Włączanie i wyłączanie inputów w zależności od checkboxa ---
+    function togglePhaseInputs(teamId, phaseBase, isChecked) {
+        // 1. Zmiana dla inputa ilości rund
+        const teamForm = document.querySelector(`.team-stats-form[data-team-id="${teamId}"]`);
+        if (teamForm) {
+            const roundInput = teamForm.querySelector(`input[name="rounds_${phaseBase}"]`);
+            if (roundInput && roundInput.type === 'number') {
+                roundInput.disabled = !isChecked;
+                if (!isChecked) {
+                    roundInput.value = '0';
+                    roundInput.style.backgroundColor = '#eee';
+                } else {
+                    roundInput.style.backgroundColor = '';
+                }
+            }
+        }
+
+        // 2. Zmiana dla inputów z ratingami zawodników w tej drużynie
+        const playerRows = document.querySelectorAll(`.player-rating-row[data-team-id="${teamId}"]`);
+        playerRows.forEach(row => {
+            const ratingInput = row.querySelector(`input[data-field="rating_${phaseBase}"]`);
+            if (ratingInput && ratingInput.type === 'number') {
+                ratingInput.disabled = !isChecked;
+                if (!isChecked) {
+                    ratingInput.value = '';
+                    ratingInput.style.backgroundColor = '#eee';
+                } else {
+                    ratingInput.style.backgroundColor = '';
+                }
+            }
+
+            // Aktualizacja atrybutu (potrzebne do poprawnego działania zakładek-filtrów)
+            let filterPhase = phaseBase;
+            if (phaseBase === 'third_place') filterPhase = 'third';
+            row.setAttribute(`data-in-${filterPhase}`, isChecked ? 'true' : 'false');
+        });
+    }
+
+    // Odpalamy logikę wyszarzania dla wszystkich przy starcie, aby zablokować to, co odznaczone
+    window.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.phase-checkbox').forEach(cb => {
+            const teamId = cb.getAttribute('data-team-id');
+            const phase = cb.getAttribute('data-phase');
+            togglePhaseInputs(teamId, phase, cb.checked);
+        });
+    });
+
+    // --- FILTROWANIE FAZ ---
     function filterPhase(phase) {
-        // Zmiana aktywnych przycisków
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab'));
         document.getElementById('btn-filter-' + phase).classList.add('active-tab');
 
-        // Ukrywanie/Pokazywanie kolumn
         const phases = ['group', 'quarters', 'semis', 'final', 'third'];
         phases.forEach(ph => {
             const showCol = (phase === 'all' || phase === ph);
@@ -250,7 +295,6 @@
             });
         });
 
-        // Ukrywanie/Pokazywanie wierszy z graczami (tylko ci, co mają awans)
         document.querySelectorAll('.player-rating-row').forEach(row => {
             if (phase === 'all') {
                 row.style.display = '';
@@ -261,7 +305,6 @@
         });
     }
 
-    // --- DODAWANIE DRUŻYNY ---
     async function addTeam(event) {
         event.preventDefault();
         const form = event.target;
@@ -275,7 +318,7 @@
                 body: JSON.stringify({
                     team_id: parseInt(teamId),
                     starts_in_semis: startsInSemis,
-                    in_group: !startsInSemis, // Domyślnie zaznaczamy grupę (chyba że skip)
+                    in_group: !startsInSemis,
                     in_quarters: false,
                     in_semis: startsInSemis,
                     in_final: false,
@@ -299,7 +342,6 @@
         }
     }
 
-    // --- USUWANIE DRUŻYNY ---
     async function removeTeam(teamId) {
         if (!confirm("Czy na pewno usunąć tę drużynę? Usunie to również wpisane wyniki jej graczy!")) return;
         try {
@@ -309,7 +351,6 @@
         } catch (e) { alert("Błąd sieci"); }
     }
 
-    // --- ZAPISYWANIE RATINGÓW (INDYWIDUALNE) ---
     async function saveRating(playerId) {
         const row = document.getElementById(`row-${playerId}`);
         const inputs = row.querySelectorAll('.rating-input');
@@ -317,7 +358,10 @@
 
         inputs.forEach(input => {
             const fieldName = input.getAttribute('data-field');
-            if (fieldName) data[fieldName] = input.value ? parseFloat(input.value) : null;
+            if (fieldName) {
+                let val = input.value.trim().replace(',', '.');
+                data[fieldName] = val !== "" ? parseFloat(val) : null;
+            }
         });
 
         const btn = row.querySelector('.individual-rating-save');
@@ -336,7 +380,6 @@
         } catch (e) { alert("Błąd sieci"); btn.disabled = false; }
     }
 
-    // --- AKTUALIZACJA STATYSTYK DRUŻYNY (INDYWIDUALNA) ---
     async function updateTeamStats(event, teamId, startsInSemis) {
         event.preventDefault();
         const form = event.target;
@@ -370,7 +413,6 @@
         } catch (e) { alert("Błąd połączenia"); btn.disabled = false; }
     }
 
-    // --- ZAPISYWANIE WSZYSTKICH DANYCH NARAZ ---
     async function saveAllChanges() {
         const btn = document.getElementById('saveAllBtn');
         const originalText = btn.innerText;
@@ -410,7 +452,10 @@
 
                 inputs.forEach(input => {
                     const fieldName = input.getAttribute('data-field');
-                    if (fieldName) data[fieldName] = input.value ? parseFloat(input.value) : null;
+                    if (fieldName) {
+                        let val = input.value.trim().replace(',', '.');
+                        data[fieldName] = val !== "" ? parseFloat(val) : null;
+                    }
                 });
 
                 return fetch("/api/performances/", {
@@ -428,7 +473,7 @@
 
             btn.innerText = "✔ Zapisano pomyślnie!";
             btn.style.backgroundColor = "#27ae60";
-            setTimeout(() => { btn.innerText = originalText; btn.disabled = false; window.location.reload(); }, 1500); // Odświeżamy po sukcesie by załadować wiersze do filtrów
+            setTimeout(() => { btn.innerText = originalText; btn.disabled = false; window.location.reload(); }, 1500);
         } catch (e) {
             console.error("Błąd zapisu grupowego:", e);
             btn.innerText = "❌ Wystąpił błąd!";
