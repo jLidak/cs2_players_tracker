@@ -134,7 +134,10 @@
     </div>
 
     <div class="card">
-        <h3 style="margin-bottom: 10px;">Wyniki Graczy (Ratingi)</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+            <h3 style="margin: 0;">Wyniki Graczy (Ratingi)</h3>
+            <input type="text" id="playerTeamSearchInput" onkeyup="applyFilters()" placeholder="🔍 Szukaj gracza lub drużyny..." style="padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9rem; font-weight: normal; width: 220px; outline: none;">
+        </div>
 
         <div style="display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap;">
             <button id="btn-filter-all" class="btn tab-btn active-tab" onclick="filterPhase('all')">Wszystkie fazy</button>
@@ -177,8 +180,8 @@
                         data-in-final="{{ 'true' if p_info and p_info.in_final else 'false' }}"
                         data-in-third="{{ 'true' if p_info and p_info.in_third_place else 'false' }}">
 
-                        <td><div style="font-weight: bold;">{{ player.nickname }}</div></td>
-                        <td style="font-size: 0.8rem;">{{ player.team.name }}</td>
+                        <td class="player-name-cell"><div style="font-weight: bold;">{{ player.nickname }}</div></td>
+                        <td class="team-name-cell" style="font-size: 0.8rem;">{{ player.team.name }}</td>
 
                         <td class="col-group"><input type="number" step="0.01" class="rating-input" data-field="rating_group" value="{{ perf.rating_group if perf and perf.rating_group is not none else '' }}" style="width: 65px; padding: 4px;"></td>
 
@@ -205,6 +208,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <p id="noResultsMsg" style="display: none; color: #999; text-align: center; padding: 1rem;">Brak wyników do wyświetlenia.</p>
         </div>
     </div>
 </div>
@@ -234,6 +238,66 @@
 {% block extra_script %}
 <script>
     const TOURNAMENT_ID = {{ tournament.id }};
+
+    // Zmienna globalna przechowująca informację, która zakładka jest aktywna
+    let currentPhaseFilter = 'all';
+
+    // --- ZINTEGROWANY SYSTEM FILTROWANIA (Zakładki + Wyszukiwarka) ---
+    function applyFilters() {
+        const searchInput = document.getElementById('playerTeamSearchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('.player-rating-row');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            let showRow = true;
+
+            // 1. Sprawdzenie aktywnej zakładki (Fazy)
+            if (currentPhaseFilter !== 'all') {
+                showRow = row.getAttribute('data-in-' + currentPhaseFilter) === 'true';
+            }
+
+            // 2. Sprawdzenie tekstu wyszukiwania (jeśli wiersz przeszedł filtr fazy)
+            if (showRow && searchInput.trim() !== '') {
+                const playerName = row.querySelector('.player-name-cell').textContent.toLowerCase();
+                const teamName = row.querySelector('.team-name-cell').textContent.toLowerCase();
+
+                if (!playerName.includes(searchInput) && !teamName.includes(searchInput)) {
+                    showRow = false;
+                }
+            }
+
+            // Aktualizacja widoczności wiersza
+            row.style.display = showRow ? '' : 'none';
+            if (showRow) visibleCount++;
+        });
+
+        // Pokaż/ukryj komunikat o braku wyników
+        const noResultsMsg = document.getElementById('noResultsMsg');
+        if (noResultsMsg) {
+            noResultsMsg.style.display = (visibleCount === 0 && rows.length > 0) ? "block" : "none";
+        }
+    }
+
+    // Wywoływana po kliknięciu w zakładkę (Grupa, QF, SF itd.)
+    function filterPhase(phase) {
+        // Aktualizacja stylów przycisków
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab'));
+        document.getElementById('btn-filter-' + phase).classList.add('active-tab');
+
+        // Ukrywanie/Pokazywanie KOLUMN w tabeli
+        const phases = ['group', 'quarters', 'semis', 'final', 'third'];
+        phases.forEach(ph => {
+            const showCol = (phase === 'all' || phase === ph);
+            document.querySelectorAll('.col-' + ph).forEach(el => {
+                el.style.display = showCol ? '' : 'none';
+            });
+        });
+
+        // Ustawienie globalnej zmiennej fazy i odpalenie pełnego filtru
+        currentPhaseFilter = phase;
+        applyFilters();
+    }
+
 
     // --- Włączanie i wyłączanie inputów w zależności od checkboxa ---
     function togglePhaseInputs(teamId, phaseBase, isChecked) {
@@ -266,11 +330,14 @@
                 }
             }
 
-            // Aktualizacja atrybutu (potrzebne do poprawnego działania zakładek-filtrów)
-            let filterPhase = phaseBase;
-            if (phaseBase === 'third_place') filterPhase = 'third';
-            row.setAttribute(`data-in-${filterPhase}`, isChecked ? 'true' : 'false');
+            // Aktualizacja atrybutu (potrzebne do filtrowania w locie)
+            let filterPhaseName = phaseBase;
+            if (phaseBase === 'third_place') filterPhaseName = 'third';
+            row.setAttribute(`data-in-${filterPhaseName}`, isChecked ? 'true' : 'false');
         });
+
+        // Jeśli jakaś zakładka jest obecnie włączona, zaktualizuj widok natychmiast
+        applyFilters();
     }
 
     // Odpalamy logikę wyszarzania dla wszystkich przy starcie, aby zablokować to, co odznaczone
@@ -281,29 +348,6 @@
             togglePhaseInputs(teamId, phase, cb.checked);
         });
     });
-
-    // --- FILTROWANIE FAZ ---
-    function filterPhase(phase) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab'));
-        document.getElementById('btn-filter-' + phase).classList.add('active-tab');
-
-        const phases = ['group', 'quarters', 'semis', 'final', 'third'];
-        phases.forEach(ph => {
-            const showCol = (phase === 'all' || phase === ph);
-            document.querySelectorAll('.col-' + ph).forEach(el => {
-                el.style.display = showCol ? '' : 'none';
-            });
-        });
-
-        document.querySelectorAll('.player-rating-row').forEach(row => {
-            if (phase === 'all') {
-                row.style.display = '';
-            } else {
-                const inPhase = row.getAttribute('data-in-' + phase) === 'true';
-                row.style.display = inPhase ? '' : 'none';
-            }
-        });
-    }
 
     async function addTeam(event) {
         event.preventDefault();

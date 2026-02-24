@@ -4,28 +4,35 @@
 
 {% block content %}
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
         <div>
-            <h1>Ranking Graczy</h1>
-            <p style="margin: 0; color: #666;">Ranking obliczany na podstawie wzoru: Suma (Punkty x Waga Turnieju)</p>
+            <h1 style="margin-bottom: 5px;">Ranking Graczy</h1>
+            <p style="margin: 0 0 15px 0; color: #666;">Ranking obliczany na podstawie wzoru: Suma (Punkty x Waga Turnieju)</p>
+
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <input type="text" id="playerSearchInput" onkeyup="filterTable()" placeholder="🔍 Szukaj gracza..." style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; width: 220px; outline: none;">
+                <input type="text" id="teamSearchInput" onkeyup="filterTable()" placeholder="🔍 Szukaj drużyny..." style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; width: 220px; outline: none;">
+            </div>
         </div>
 
-        <form method="get" action="/ranking" style="display: flex; align-items: center;">
-            <select name="tournament_id" onchange="this.form.submit()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem;">
-                <option value="">Wszystkie Turnieje (Ranking Ogólny)</option>
-                {% for t in tournaments %}
-                <option value="{{ t.id }}" {% if selected_tournament_id == t.id %}selected{% endif %}>
-                    {{ t.name }}
-                </option>
-                {% endfor %}
-            </select>
-        </form>
+        <div style="margin-top: 5px;">
+            <form method="get" action="/ranking" style="display: flex; align-items: center; margin: 0;">
+                <select name="tournament_id" onchange="this.form.submit()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; outline: none; cursor: pointer;">
+                    <option value="">Wszystkie Turnieje (Ogólny)</option>
+                    {% for t in tournaments %}
+                    <option value="{{ t.id }}" {% if selected_tournament_id == t.id %}selected{% endif %}>
+                        {{ t.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
     </div>
 </div>
 
 <div class="card">
     {% if ranking %}
-    <table>
+    <table id="rankingTable">
         <thead>
             <tr>
                 <th style="width: 50px; text-align: center;">#</th>
@@ -38,7 +45,7 @@
         </thead>
         <tbody>
             {% for entry in ranking %}
-            <tr style="cursor: pointer;" onclick="if(!event.target.closest('button')) window.location.href='/player/{{ entry.player_id }}'">
+            <tr class="ranking-row" style="cursor: pointer;" onclick="if(!event.target.closest('button')) window.location.href='/player/{{ entry.player_id }}'">
                 <td style="text-align: center; font-weight: bold; font-size: 1.2rem;">
                     {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}
                 </td>
@@ -49,8 +56,8 @@
                     <div style="width: 40px; height: 40px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center;">👤</div>
                     {% endif %}
                 </td>
-                <td style="font-weight: 600;">{{ entry.nickname }}</td>
-                <td>{{ entry.team_name if entry.team_name else '-' }}</td>
+                <td class="player-name-cell" style="font-weight: 600;">{{ entry.nickname }}</td>
+                <td class="team-name-cell">{{ entry.team_name if entry.team_name else '-' }}</td>
                 <td style="text-align: right; font-weight: bold; color: #667eea; font-size: 1.1em;">{{  entry.total_points | int  }}</td>
                 <td style="text-align: center;">
                     <button class="btn" style="padding: 5px 10px; font-size: 0.8rem; background: #3498db;"
@@ -62,6 +69,9 @@
             {% endfor %}
         </tbody>
     </table>
+
+    <p id="noResultsMsg" style="display: none; color: #999; text-align: center; padding: 2rem;">Brak graczy spełniających kryteria.</p>
+
     {% else %}
     <p style="color: #999; text-align: center; padding: 2rem;">Brak danych rankingowych.</p>
     {% endif %}
@@ -79,13 +89,46 @@
 </div>
 
 <script>
+    function filterTable() {
+        const teamFilter = document.getElementById("teamSearchInput").value.toLowerCase();
+        const playerFilter = document.getElementById("playerSearchInput").value.toLowerCase();
+
+        const rows = document.querySelectorAll(".ranking-row");
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const teamCell = row.querySelector(".team-name-cell");
+            const playerCell = row.querySelector(".player-name-cell");
+
+            if (teamCell && playerCell) {
+                const teamName = (teamCell.textContent || teamCell.innerText).toLowerCase();
+                const playerName = (playerCell.textContent || playerCell.innerText).toLowerCase();
+
+                const matchesTeam = teamName.includes(teamFilter);
+                const matchesPlayer = playerName.includes(playerFilter);
+
+                if (matchesTeam && matchesPlayer) {
+                    row.style.display = "";
+                    visibleCount++;
+                } else {
+                    row.style.display = "none";
+                }
+            }
+        });
+
+        const noResults = document.getElementById("noResultsMsg");
+        if (noResults) {
+            noResults.style.display = (visibleCount === 0 && rows.length > 0) ? "block" : "none";
+        }
+    }
+
     function showDetails(playerData) {
         const modal = document.getElementById('detailsModal');
         const content = document.getElementById('modalContent');
         const title = document.getElementById('modalTitle');
 
         title.innerText = `Szczegóły: ${playerData.nickname}`;
-        content.innerHTML = ''; // Czyścimy
+        content.innerHTML = '';
 
         if (!playerData.details || playerData.details.length === 0) {
             content.innerHTML = '<p>Brak szczegółowych danych.</p>';
@@ -135,7 +178,6 @@
         document.getElementById('detailsModal').style.display = 'none';
     }
 
-    // Zamknij modal po kliknięciu poza nim
     window.onclick = function(event) {
         const modal = document.getElementById('detailsModal');
         if (event.target == modal) {
