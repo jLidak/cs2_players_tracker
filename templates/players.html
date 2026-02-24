@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Players - CS2 Player Tracker{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto;">
+
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+            <h2 style="margin: 0;">Players Database</h2>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button onclick="openAddPlayerModal()" class="btn" style="background-color: #27ae60;">+ Add Player</button>
+                <a href="/api/export/" class="btn" style="background-color: #3498db; text-decoration: none;">Export JSON</a>
+                <button onclick="clearDatabase()" class="btn btn-danger" style="background-color: #c0392b;">Clear DB</button>
+            </div>
+        </div>
+
+        <div class="search-box" style="margin-bottom: 20px;">
+            <input type="text" id="searchInput" placeholder="Search for a player or team..." oninput="searchPlayers()" style="width: 100%; padding: 10px; font-size: 1rem; border: 1px solid #ddd; border-radius: 5px; outline: none;">
+        </div>
+
+        <div class="player-grid" id="playerGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+            {% for player in players %}
+            <div class="player-card" onclick="window.location.href='/player/{{ player.id }}'" style="background: white; border: 1px solid #eee; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+
+                {% if player.photo_url %}
+                <img src="{{ player.photo_url }}" alt="{{ player.nickname }}" class="player-photo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 3px solid #f1f1f1;">
+                {% else %}
+                <div style="width: 100px; height: 100px; border-radius: 50%; background: #eee; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #aaa;">👤</div>
+                {% endif %}
+
+                <h3 style="margin: 5px 0; color: #333;">{{ player.nickname }}</h3>
+
+                {% if player.team %}
+                <p style="color: #666; margin: 0; font-size: 0.9rem; font-weight: bold;">{{ player.team.name }}</p>
+                {% else %}
+                <p style="color: #999; margin: 0; font-size: 0.9rem;">No team</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div id="addPlayerModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+    <div style="background: white; padding: 25px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+        <h2 style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">Add New Player</h2>
+
+        <form onsubmit="submitAddPlayer(event)" style="margin-top: 15px;">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Nickname:</label>
+                <input type="text" name="nickname" required style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; outline: none;">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Team:</label>
+                <select name="team_id" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; outline: none;">
+                    <option value="">-- Select team --</option>
+                    {% for team in teams %} <option value="{{ team.id }}">{{ team.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Photo URL (optional):</label>
+                <input type="url" name="photo_url" placeholder="https://..." style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; outline: none;">
+            </div>
+
+            <div style="text-align: right;">
+                <button type="button" class="btn" style="background: #95a5a6; margin-right: 5px;" onclick="closeAddPlayerModal()">Cancel</button>
+                <button type="submit" class="btn" style="background: #27ae60;">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .player-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+    }
+</style>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    let allPlayers = {{ players | tojson }};
+
+    function searchPlayers() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+
+        const filteredPlayers = allPlayers.filter(player =>
+            player.nickname.toLowerCase().includes(query) ||
+            (player.team && player.team.name.toLowerCase().includes(query))
+        );
+
+        displayPlayers(filteredPlayers);
+    }
+
+    function displayPlayers(players) {
+        const grid = document.getElementById('playerGrid');
+        grid.innerHTML = '';
+
+        if (players.length === 0) {
+            grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #7f8c8d; padding: 2rem;">No players found.</p>';
+            return;
+        }
+
+        players.forEach(player => {
+            const card = document.createElement('div');
+            card.className = 'player-card';
+            card.onclick = () => window.location.href = `/player/${player.id}`;
+            card.style.cssText = "background: white; border: 1px solid #eee; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);";
+
+            let photoHtml = '';
+            if (player.photo_url) {
+                photoHtml = `<img src="${player.photo_url}" alt="${player.nickname}" class="player-photo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 3px solid #f1f1f1;">`;
+            } else {
+                photoHtml = '<div style="width: 100px; height: 100px; border-radius: 50%; background: #eee; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #aaa;">👤</div>';
+            }
+
+            let teamHtml = '';
+            if (player.team) {
+                teamHtml = `<p style="color: #666; margin: 0; font-size: 0.9rem; font-weight: bold;">${player.team.name}</p>`;
+            } else {
+                teamHtml = '<p style="color: #999; margin: 0; font-size: 0.9rem;">No team</p>';
+            }
+
+            card.innerHTML = `
+                ${photoHtml}
+                <h3 style="margin: 5px 0; color: #333;">${player.nickname}</h3>
+                ${teamHtml}
+            `;
+
+            card.onmouseenter = function() { this.style.transform = "translateY(-5px)"; this.style.boxShadow = "0 5px 15px rgba(0,0,0,0.1)"; }
+            card.onmouseleave = function() { this.style.transform = "translateY(0)"; this.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)"; }
+
+            grid.appendChild(card);
+        });
+    }
+
+    function clearDatabase() {
+        if (!confirm("WARNING! Are you sure you want to delete ALL data from the database?")) return;
+        if (!confirm("This action cannot be undone. Confirm again to proceed.")) return;
+
+        fetch('/api/database/clear', {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (response.ok) {
+                alert("Database has been successfully cleared.");
+                window.location.reload();
+            } else {
+                alert("An error occurred while clearing the database.");
+            }
+        })
+        .catch(err => alert("Connection error: " + err));
+    }
+
+    function openAddPlayerModal() {
+        document.getElementById('addPlayerModal').style.display = 'flex';
+    }
+
+    function closeAddPlayerModal() {
+        document.getElementById('addPlayerModal').style.display = 'none';
+    }
+
+    async function submitAddPlayer(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        const teamIdVal = formData.get("team_id");
+
+        const data = {
+            nickname: formData.get("nickname"),
+            team_id: teamIdVal ? parseInt(teamIdVal) : null,
+            photo_url: formData.get("photo_url") || null
+        };
+
+        try {
+            const response = await fetch("/api/players/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const err = await response.json();
+                alert("Error: " + (err.detail || "An error occurred"));
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Server connection error.");
+        }
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('addPlayerModal');
+        if (event.target === modal) {
+            closeAddPlayerModal();
+        }
+    }
+</script>
+{% endblock %}

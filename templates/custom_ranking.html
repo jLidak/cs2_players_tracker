@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Kreator Rankingu{% endblock %}
+{% block title %}Ranking Creator{% endblock %}
 
 {% block content %}
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <div>
-            <h2 style="margin: 0;">🛠️ Kreator Własnego Rankingu</h2>
-            <p style="margin: 0;">Zmieniaj parametry globalne lub wagi konkretnych turniejów, aby zobaczyć symulację.</p>
+            <h2 style="margin: 0;">🛠️ Custom Ranking Creator</h2>
+            <p style="margin: 0;">Change global parameters or specific tournament weights to see the simulation.</p>
         </div>
 
         <div style="display: flex; align-items: center;">
-            <label style="margin-right: 10px; font-weight: bold;">Zakres rankingu:</label>
+            <label style="margin-right: 10px; font-weight: bold;">Ranking scope:</label>
             <select id="tournamentFilter" onchange="updateRanking()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem;">
-                <option value="">Wszystkie Turnieje (Ranking Ogólny)</option>
+                <option value="">All Tournaments (Overall Ranking)</option>
                 {% for t in tournaments %}
                 <option value="{{ t.id }}">{{ t.name }}</option>
                 {% endfor %}
@@ -25,22 +25,22 @@
         <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd;">
 
             <div style="display: flex; gap: 10px; margin-bottom: 15px; position: sticky; top: 10px; z-index: 10; background: #ecf0f1; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-wrap: wrap;">
-                <button onclick="updateRanking()" class="btn" style="flex: 1 1 100%; background: #3498db; margin-bottom: 5px;">PRZELICZ</button>
+                <button onclick="updateRanking()" class="btn" style="flex: 1 1 100%; background: #3498db; margin-bottom: 5px;">CALCULATE</button>
 
                 <div style="flex: 1 1 100%; display: flex; gap: 5px;">
-                    <button onclick="savePreset()" class="btn" style="flex: 1; background: #27ae60; font-size: 0.9rem;">💾 Zapisz konfigurację</button>
-                    <button onclick="openLoadModal()" class="btn" style="flex: 1; background: #f39c12; font-size: 0.9rem;">📂 Wczytaj / Zarządzaj</button>
+                    <button onclick="savePreset()" class="btn" style="flex: 1; background: #27ae60; font-size: 0.9rem;">💾 Save Configuration</button>
+                    <button onclick="openLoadModal()" class="btn" style="flex: 1; background: #f39c12; font-size: 0.9rem;">📂 Load / Manage</button>
                 </div>
             </div>
 
             <fieldset style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-                <legend style="font-size: 0.9em; font-weight: bold;">Globalne Parametry</legend>
+                <legend style="font-size: 0.9em; font-weight: bold;">Global Parameters</legend>
 
                 <div class="control-group">
                     <label>
-                        Damping Ratingu (1/X)
+                        Rating Damping (1/X)
                         <div class="help-tip">?
-                            <span class="tooltip-text">Spłaszcza różnice w ratingach. Im wyższa wartość, tym mniejszy wpływ mają skrajnie wysokie lub niskie ratingi.</span>
+                            <span class="tooltip-text">Flattens differences in ratings. Higher values mean extremely high or low ratings have less impact.</span>
                         </div>
                     </label>
                     <input type="number" id="ratingExp" step="0.1" value="{{ rating_exp }}" onchange="updateRanking()">
@@ -48,9 +48,9 @@
 
                 <div class="control-group">
                     <label>
-                        Pierwiastek Rund
+                        Rounds Root
                         <div class="help-tip">?
-                            <span class="tooltip-text">Ogranicza liniowy wpływ liczby rund na punkty. Wyższa wartość sprawia, że granie bardzo wielu rund daje mniejsze przyrosty.</span>
+                            <span class="tooltip-text">Limits the linear impact of the number of rounds on points. A higher value means playing very many rounds gives smaller increments.</span>
                         </div>
                     </label>
                     <input type="number" id="roundsRoot" step="0.1" value="{{ rounds_root }}" onchange="updateRanking()">
@@ -58,9 +58,9 @@
 
                 <div class="control-group">
                     <label>
-                        Mnożnik Bazowy
+                        Base Multiplier
                         <div class="help-tip">?
-                            <span class="tooltip-text">Główna, wyjściowa pula punktów przez którą mnożone są wyniki z ratingu i ilości rozegranych rund.</span>
+                            <span class="tooltip-text">The main, starting pool of points by which results from the rating and the number of rounds played are multiplied.</span>
                         </div>
                     </label>
                     <input type="number" id="baseMult" step="1" value="{{ base_multiplier }}" onchange="updateRanking()">
@@ -69,9 +69,9 @@
                 <hr style="margin: 8px 0;">
 
                 <label style="font-weight:bold; font-size: 0.8em; display: flex; align-items: center;">
-                    Bonusy fazowe (domyślnie {{ bonus_val }}):
+                    Phase Bonuses (default {{ bonus_val }}):
                     <div class="help-tip" style="margin-bottom: 2px;">?
-                        <span class="tooltip-text">Stały dodatek do ratingu (np. +0.15) za udział w trudniejszych fazach turnieju.</span>
+                        <span class="tooltip-text">A fixed addition to the rating (e.g., +0.15) for participating in more difficult tournament phases.</span>
                     </div>
                 </label>
 
@@ -83,7 +83,7 @@
                 </div>
             </fieldset>
 
-            <h4 style="margin-bottom: 10px; border-bottom: 2px solid #ddd; padding-bottom: 5px;">Turnieje (Własne Wagi)</h4>
+            <h4 style="margin-bottom: 10px; border-bottom: 2px solid #ddd; padding-bottom: 5px;">Tournaments (Custom Weights)</h4>
             <div id="tournamentsList">
                 {% for t in tournaments %}
                 <div class="tournament-box" id="tour-{{ t.id }}" data-bracket="{{ t.bracket_type }}" style="background: white; border: 1px solid #eee; padding: 8px; margin-bottom: 10px; border-radius: 5px;">
@@ -99,12 +99,12 @@
 
                     <div style="margin-bottom: 5px;">
                         <input type="checkbox" id="check-{{ t.id }}" class="override-check" onchange="toggleTourInputs({{ t.id }}); updateRanking()">
-                        <label for="check-{{ t.id }}" style="font-size: 0.8em; cursor: pointer; display: inline;">Zmień wagi (Oryginalnie: {{ t.weight }})</label>
+                        <label for="check-{{ t.id }}" style="font-size: 0.8em; cursor: pointer; display: inline;">Change weights (Original: {{ t.weight }})</label>
                     </div>
 
                     <div id="inputs-{{ t.id }}" class="weights-inputs" style="display: none; opacity: 0.6; padding-top: 5px;">
                         <div style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed #ccc;">
-                            <label style="font-size: 0.75rem; font-weight: bold; color: #8e44ad; display: block; margin-bottom: 3px;">Waga Turnieju (Mnożnik całkowity):</label>
+                            <label style="font-size: 0.75rem; font-weight: bold; color: #8e44ad; display: block; margin-bottom: 3px;">Tournament Weight (Total multiplier):</label>
                             <input type="number" class="w-tournament" step="0.01" value="{{ t.weight }}" onchange="updateRanking()" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
                         </div>
 
@@ -118,7 +118,7 @@
 
                             {% if t.bracket_type == "Bracket 6 teams" %}
                             <div style="grid-column: span 2; margin-top: 5px; border-top: 1px dashed #ccc; padding-top: 5px;">
-                                <label style="font-size: 0.75rem; color: #16a085; font-weight: bold;">Wagi Override (Start w SF)</label>
+                                <label style="font-size: 0.75rem; color: #16a085; font-weight: bold;">Override Weights (Start in SF)</label>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px;">
                                     <div><label style="font-size: 0.65em; display: block;">Group (Ov)</label><input type="number" class="w-group-ov" step="0.01" value="{{ t.weight_group_override if t.weight_group_override is not none else t.weight_group }}" onchange="updateRanking()"></div>
                                     <div><label style="font-size: 0.65em; display: block;">SF (Ov)</label><input type="number" class="w-sf-ov" step="0.01" value="{{ t.weight_semis_override if t.weight_semis_override is not none else (1.0 - t.weight_group)/2 }}" onchange="updateRanking()"></div>
@@ -143,11 +143,11 @@
 
         <div>
             <div style="display:flex; justify-content:space-between; align-items: center; margin-top: 0; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
-                <h3 style="margin:0;">Wyniki Symulacji <span id="loader" style="display:none; font-size: 0.6em; color: #e67e22; margin-left: 10px;">Przeliczanie...</span></h3>
+                <h3 style="margin:0;">Simulation Results <span id="loader" style="display:none; font-size: 0.6em; color: #e67e22; margin-left: 10px;">Calculating...</span></h3>
 
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <input type="text" id="customPlayerSearchInput" onkeyup="filterCustomTable()" placeholder="🔍 Szukaj gracza..." style="padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9rem; font-weight: normal; width: 140px; outline: none;">
-                    <input type="text" id="customTeamSearchInput" onkeyup="filterCustomTable()" placeholder="🔍 Szukaj drużyny..." style="padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9rem; font-weight: normal; width: 140px; outline: none;">
+                    <input type="text" id="customPlayerSearchInput" onkeyup="filterCustomTable()" placeholder="🔍 Search player..." style="padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9rem; font-weight: normal; width: 140px; outline: none;">
+                    <input type="text" id="customTeamSearchInput" onkeyup="filterCustomTable()" placeholder="🔍 Search team..." style="padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9rem; font-weight: normal; width: 140px; outline: none;">
                 </div>
             </div>
 
@@ -155,17 +155,17 @@
                 <thead style="background: #eee;">
                     <tr>
                         <th style="width: 40px; text-align: center;">#</th>
-                        <th>Gracz</th>
-                        <th>Drużyna</th>
-                        <th>Punkty</th>
-                        <th style="width: 100px; text-align: center;">Akcje</th>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>Points</th>
+                        <th style="width: 100px; text-align: center;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="rankingBody">
                 </tbody>
             </table>
 
-            <p id="customNoResultsMsg" style="display: none; color: #999; text-align: center; padding: 2rem;">Brak wyników spełniających kryteria.</p>
+            <p id="customNoResultsMsg" style="display: none; color: #999; text-align: center; padding: 2rem;">No results matching criteria.</p>
         </div>
     </div>
 </div>
@@ -173,7 +173,7 @@
 <div id="loadPresetModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
     <div style="background: white; padding: 20px; border-radius: 8px; width: 850px; max-width: 95%; max-height: 90vh; overflow-y: auto;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2 style="margin: 0;">Zapisane Konfiguracje Rankingu</h2>
+            <h2 style="margin: 0;">Saved Ranking Configurations</h2>
             <button onclick="closeLoadModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
         </div>
 
@@ -181,10 +181,10 @@
         <table class="table" style="font-size: 0.9rem;">
             <thead>
                 <tr>
-                    <th>Nazwa Profilu</th>
-                    <th>Globalne Parametry (Damping / Pierwiastek / Mnożnik)</th>
-                    <th>Data Zapisu</th>
-                    <th style="text-align: right;">Akcje</th>
+                    <th>Profile Name</th>
+                    <th>Global Parameters (Damping / Root / Multiplier)</th>
+                    <th>Save Date</th>
+                    <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -194,17 +194,17 @@
                     <td style="color: #555;">
                         {{ p.settings.rating_exponent_divisor }} / {{ p.settings.rounds_root }} / {{ p.settings.base_multiplier }}
                     </td>
-                    <td>{{ p.created_at.strftime('%Y-%m-%d %H:%M') if p.created_at else 'Brak' }}</td>
+                    <td>{{ p.created_at.strftime('%Y-%m-%d %H:%M') if p.created_at else 'None' }}</td>
                     <td style="text-align: right; white-space: nowrap;">
-                        <button onclick='applyPreset({{ p.settings | tojson | safe }})' class="btn" style="padding: 5px 10px; font-size: 0.8rem; background: #27ae60;">Wczytaj</button>
-                        <button onclick='deletePreset({{ p.id }}, "{{ p.name }}")' class="btn" style="padding: 5px 10px; font-size: 0.8rem; background: #c0392b;">Usuń</button>
+                        <button onclick='applyPreset({{ p.settings | tojson | safe }})' class="btn" style="padding: 5px 10px; font-size: 0.8rem; background: #27ae60;">Load</button>
+                        <button onclick='deletePreset({{ p.id }}, "{{ p.name }}")' class="btn" style="padding: 5px 10px; font-size: 0.8rem; background: #c0392b;">Delete</button>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <p style="text-align: center; color: #7f8c8d; padding: 20px;">Brak zapisanych profilów w bazie.</p>
+        <p style="text-align: center; color: #7f8c8d; padding: 20px;">No saved profiles in the database.</p>
         {% endif %}
     </div>
 </div>
@@ -212,7 +212,7 @@
 <div id="detailsModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
     <div style="background: white; padding: 20px; border-radius: 8px; width: 700px; max-width: 95%; max-height: 90vh; overflow-y: auto;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2 id="modalTitle" style="margin: 0;">Szczegóły Punktacji</h2>
+            <h2 id="modalTitle" style="margin: 0;">Point Details</h2>
             <button onclick="closeDetailsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
         </div>
         <div id="modalContent"></div>
@@ -329,7 +329,7 @@
 
                 let sumNormal = wGroup + wQf + wSf + wFinal;
                 if (Math.abs(sumNormal - 1.0) > 0.01) {
-                    isWarning = true; warningText += `Suma wag std = ${sumNormal.toFixed(2)}. `;
+                    isWarning = true; warningText += `Sum of standard weights = ${sumNormal.toFixed(2)}. `;
                 }
 
                 if (bracketType === "Bracket 6 teams") {
@@ -338,7 +338,7 @@
                     wfinOv = parseFloat(box.querySelector('.w-final-ov').value) || 0;
                     let sumOv = wgOv + wsfOv + wfinOv;
                     if (Math.abs(sumOv - 1.0) > 0.01) {
-                        isWarning = true; warningText += `Suma wag override = ${sumOv.toFixed(2)}.`;
+                        isWarning = true; warningText += `Sum of override weights = ${sumOv.toFixed(2)}.`;
                     }
                 }
 
@@ -425,7 +425,7 @@
                 btnDetails.style.padding = '5px 10px';
                 btnDetails.style.fontSize = '0.8rem';
                 btnDetails.style.background = '#3498db';
-                btnDetails.innerText = 'Szczegóły';
+                btnDetails.innerText = 'Details';
                 btnDetails.onclick = () => showDetails(player);
 
                 tdActions.appendChild(btnDetails);
@@ -443,24 +443,24 @@
 
         } catch (e) {
             console.error(e);
-            alert("Błąd obliczeń: " + e);
+            alert("Calculation error: " + e);
         } finally {
             loader.style.display = 'none';
             tbody.style.opacity = '1';
         }
     }
 
-    // --- FUNKCJE SZCZEGÓŁÓW ZAWODNIKA (MODAL) ---
+    // --- PLAYER DETAILS (MODAL) FUNCTIONS ---
     function showDetails(playerData) {
         const modal = document.getElementById('detailsModal');
         const content = document.getElementById('modalContent');
         const title = document.getElementById('modalTitle');
 
-        title.innerText = `Szczegóły: ${playerData.nickname}`;
+        title.innerText = `Details: ${playerData.nickname}`;
         content.innerHTML = '';
 
         if (!playerData.details || playerData.details.length === 0) {
-            content.innerHTML = '<p>Brak szczegółowych danych.</p>';
+            content.innerHTML = '<p>No detailed data available.</p>';
             modal.style.display = 'flex';
             return;
         }
@@ -472,20 +472,19 @@
                 <div style="border: 1px solid #eee; border-radius: 5px; padding: 10px; margin-bottom: 10px; background: #fafafa;">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 5px;">
                         <strong>${tour.tournament_name}</strong>
-                        <span style="font-size: 0.9em; color: #555;">Waga Turnieju: <strong>${tour.tournament_weight}</strong> | Suma: <strong style="color: #27ae60;">${tour.total_tournament_points}</strong></span>
+                        <span style="font-size: 0.9em; color: #555;">Tournament Weight: <strong>${tour.tournament_weight}</strong> | Total: <strong style="color: #27ae60;">${tour.total_tournament_points}</strong></span>
                     </div>
                     <table style="width: 100%; font-size: 0.9em; border-collapse: collapse;">
                         <tr style="background: #eee; text-align: left;">
-                            <th style="padding: 4px;">Faza</th>
+                            <th style="padding: 4px;">Phase</th>
                             <th style="padding: 4px;">Rating (+Bonus)</th>
-                            <th style="padding: 4px;">Rundy</th>
-                            <th style="padding: 4px;">Waga Fazy</th>
-                            <th style="padding: 4px; text-align: right;">Punkty</th>
+                            <th style="padding: 4px;">Rounds</th>
+                            <th style="padding: 4px;">Phase Weight</th>
+                            <th style="padding: 4px; text-align: right;">Points</th>
                         </tr>
             `;
 
             tour.phases.forEach(phase => {
-                // ZMIANA: Obsługa formatowania czystego ratingu z dynamicznym dopiskiem bonusu
                 let bonusStr = phase.bonus > 0 ? ` <span style="color: #27ae60; font-size: 0.85em;">(+${phase.bonus.toFixed(2)})</span>` : '';
                 html += `
                     <tr>
@@ -531,7 +530,7 @@
     }
 
     async function savePreset() {
-        const name = prompt("Podaj nazwę dla nowego profilu ustawień (jeśli nazwa istnieje, profil zostanie zaktualizowany):");
+        const name = prompt("Enter a name for the new settings profile (if the name exists, the profile will be updated):");
         if (!name) return;
 
         const payload = getSettingsPayload();
@@ -544,14 +543,14 @@
             });
 
             if (response.ok) {
-                alert("Ustawienia zostały zapisane do bazy!");
+                alert("Settings have been saved to the database!");
                 window.location.reload();
             } else {
-                alert("Wystąpił błąd podczas zapisywania.");
+                alert("An error occurred while saving.");
             }
         } catch (e) {
             console.error(e);
-            alert("Błąd sieci.");
+            alert("Network error.");
         }
     }
 
@@ -603,13 +602,13 @@
             }
             updateRanking();
         } catch (e) {
-            console.error("Błąd parsowania:", e);
-            alert("Nie udało się poprawnie wczytać ustawień.");
+            console.error("Parsing error:", e);
+            alert("Failed to load settings correctly.");
         }
     }
 
     async function deletePreset(id, name) {
-        if (!confirm(`Czy na pewno chcesz usunąć profil "${name}"?`)) {
+        if (!confirm(`Are you sure you want to delete the profile "${name}"?`)) {
             return;
         }
 
@@ -621,11 +620,11 @@
             if (response.ok) {
                 window.location.reload();
             } else {
-                alert("Błąd podczas usuwania.");
+                alert("Error during deletion.");
             }
         } catch (e) {
             console.error(e);
-            alert("Błąd sieci.");
+            alert("Network error.");
         }
     }
 

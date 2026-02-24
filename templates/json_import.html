@@ -1,83 +1,69 @@
 {% extends "base.html" %}
 
-{% block title %}Zarządzanie Danymi{% endblock %}
+{% block title %}Data Management{% endblock %}
 
 {% block content %}
 <div style="max-width: 800px; margin: 0 auto;">
 
     <div class="card" style="text-align: center; margin-bottom: 30px;">
-        <h1>Import / Export Bazy Danych</h1>
-        <p>Zarządzaj kopiami zapasowymi całej aplikacji.</p>
+        <h1>Database Import / Export</h1>
+        <p>Manage backups for the entire application.</p>
     </div>
 
     <div class="card" style="margin-bottom: 20px; border-left: 5px solid #3498db;">
-        <h2>📤 Eksport (Backup)</h2>
-        <p>Pobierz całą zawartość bazy danych (drużyny, gracze, turnieje, mecze, wyniki) do jednego pliku JSON.</p>
-        <a href="/api/export" class="btn" style="background-color: #3498db; text-decoration: none; display: inline-block;">
-            Pobierz pełny backup (.json)
+        <h2>📤 Export (Backup)</h2>
+        <p>Download the entire database content (teams, players, tournaments, matches, results) into a single JSON file.</p>
+        <a href="/api/export" class="btn" style="background-color: #3498db; text-decoration: none; display: block; text-align: center; width: 100%; box-sizing: border-box;  margin-top: 10px;">
+            Download full backup (.json)
         </a>
     </div>
 
     <div class="card" style="margin-bottom: 20px; border-left: 5px solid #e74c3c;">
-        <h2>📥 Import (Przywracanie)</h2>
-        <p style="color: #c0392b; font-weight: bold;">UWAGA: Ta operacja usunie wszystkie obecne dane i zastąpi je danymi z pliku!</p>
+        <h2>📥 Import (Restore)</h2>
+        <p style="color: #c0392b; font-weight: bold;">WARNING: This operation will delete all current data and replace it with the data from the file!</p>
 
         <form onsubmit="importDatabase(event)" style="margin-top: 15px;">
             <input type="file" id="importFile" accept=".json" required style="padding: 10px; border: 1px solid #ddd; width: 100%; box-sizing: border-box; margin-bottom: 10px;">
-            <button type="submit" class="btn" style="background-color: #e74c3c; width: 100%;">
-                Wgraj plik i nadpisz bazę
+            <button type="submit" class="btn" style="background-color: #e74c3c; width: 100%;  padding-top: 10px; margin-top: 10px;">
+                Upload file and overwrite database
             </button>
         </form>
     </div>
 
     <div class="card" style="border-left: 5px solid #2ecc71;">
-        <h2>🔄 Dane Startowe</h2>
-        <p>Załaduj domyślne dane z plików serwerowych (folder <code>json_import_files</code>). Bezpieczne - nie usuwa istniejących danych, tylko dodaje nowe.</p>
-        <button onclick="autoImportFromFiles()" class="btn" style="background-color: #2ecc71; width: 100%;">
-            Załaduj wstępną bazę
+        <h2>🔄 Initial Data</h2>
+        <p>Load default data from server files (<code>json_import_files</code> folder). Safe - does not delete existing data, only adds new data.</p>
+        <button onclick="autoImportFromFiles()" class="btn" style="background-color: #2ecc71; width: 100%; padding-top: 10px; margin-top: 10px;">
+            Load initial database
         </button>
     </div>
 
     <div class="card">
-    <h2>Zarządzanie Danymi (JSON)</h2>
+        <h2>📥 Import Teams and Players</h2>
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px;">
-
-        <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #ddd;">
-            <h3 style="margin-top: 0;">📥 Importuj Drużyny i Graczy</h3>
-            <p style="font-size: 0.9rem; color: #666;">
-                Wgraj plik <code>.json</code> zawierający listę drużyn i zawodników. Struktura:
-                <pre style="background: #eee; padding: 5px; font-size: 0.75rem;">
+        <p style="font-size: 0.9rem; color: #666;">
+            Upload a <code>.json</code> file containing a list of teams and players. Structure:
+            <pre style="background: #eee; padding: 5px; font-size: 0.75rem;">
 {
   "teams": [
     {
-      "name": "Nazwa",
+      "name": "Team Name",
       "logo_url": "...",
       "players": [
-        {"nickname": "Nick", "photo_url": "..."}
+        {"nickname": "Nickname", "photo_url": "..."}
       ]
     }
   ]
 }
-                </pre>
-            </p>
+            </pre>
+        </p>
 
-            <input type="file" id="jsonFileInput" accept=".json" style="margin-bottom: 10px;">
-            <br>
-            <button onclick="uploadJson()" class="btn" style="background: #3498db; width: 100%;">Wgraj Plik</button>
-            <div id="importStatus" style="margin-top: 10px; font-weight: bold;"></div>
-        </div>
-
-        <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #ddd;">
-            <h3 style="margin-top: 0;">📤 Eksportuj Bazę</h3>
-            <p style="font-size: 0.9rem; color: #666;">Pobierz całą bazę danych w formacie JSON.</p>
-            <a href="/api/export_db" target="_blank">
-                <button class="btn" style="background: #2ecc71; width: 100%;">Pobierz JSON</button>
-            </a>
-        </div>
+        <input type="file" id="jsonFileInput" accept=".json" style="margin-bottom: 10px;">
+        <br>
+        <button onclick="uploadJson()" class="btn" style="background: #3498db; width: 100%; padding-top: 10px; margin-top: 10px;">Upload File</button>
+        <div id="importStatus" style="margin-top: 10px; font-weight: bold;"></div>
 
     </div>
-</div>
 
 </div>
 {% endblock %}
@@ -87,7 +73,7 @@
     async function importDatabase(event) {
         event.preventDefault();
 
-        if (!confirm("CZY JESTEŚ PEWIEN? To usunie WSZYSTKIE obecne dane z bazy i zastąpi je zawartością pliku. Tej operacji nie można cofnąć.")) {
+        if (!confirm("ARE YOU SURE? This will delete ALL current data from the database and replace it with the file contents. This operation cannot be undone.")) {
             return;
         }
 
@@ -97,7 +83,7 @@
 
         const btn = event.target.querySelector('button');
         const originalText = btn.innerText;
-        btn.innerText = "Trwa importowanie...";
+        btn.innerText = "Importing...";
         btn.disabled = true;
 
         try {
@@ -107,15 +93,15 @@
             });
 
             if (response.ok) {
-                alert("Sukces! Baza danych została przywrócona.");
+                alert("Success! Database has been restored.");
                 window.location.reload();
             } else {
                 const err = await response.json();
-                alert("Błąd: " + (err.detail || "Wystąpił błąd podczas importu"));
+                alert("Error: " + (err.detail || "An error occurred during import"));
             }
         } catch (e) {
             console.error(e);
-            alert("Błąd połączenia z serwerem.");
+            alert("Server connection error.");
         } finally {
             btn.innerText = originalText;
             btn.disabled = false;
@@ -123,7 +109,7 @@
     }
 
     async function autoImportFromFiles() {
-        if (!confirm("Czy chcesz załadować dane startowe?")) return;
+        if (!confirm("Do you want to load initial data?")) return;
 
         try {
             const response = await fetch('/api/import/auto-from-files', { method: 'POST' });
@@ -132,10 +118,10 @@
                 alert(data.message);
                 window.location.reload();
             } else {
-                alert("Błąd: " + data.detail);
+                alert("Error: " + data.detail);
             }
         } catch (e) {
-            alert("Błąd sieci.");
+            alert("Network error.");
         }
     }
 
@@ -144,29 +130,29 @@
         const statusDiv = document.getElementById('importStatus');
 
         if (!fileInput.files.length) {
-            alert("Wybierz plik!");
+            alert("Please select a file!");
             return;
         }
 
         const file = fileInput.files[0];
-        statusDiv.innerText = "Wczytywanie...";
+        statusDiv.innerText = "Loading...";
         statusDiv.style.color = "blue";
 
         try {
-            // 1. Odczytaj plik jako tekst
+            // Read file as text
             const text = await file.text();
 
-            // 2. Sparsuj do obiektu JSON (walidacja formatu po stronie JS)
+            // Parse to JSON object
             let jsonData;
             try {
                 jsonData = JSON.parse(text);
             } catch (e) {
-                statusDiv.innerText = "Błąd: Nieprawidłowy format JSON";
+                statusDiv.innerText = "Error: Invalid JSON format";
                 statusDiv.style.color = "red";
                 return;
             }
 
-            // 3. Wyślij do backendu
+            // Send to backend
             const response = await fetch('/api/import_data/', {
                 method: 'POST',
                 headers: {
@@ -180,16 +166,16 @@
             if (response.ok) {
                 statusDiv.innerText = result.message;
                 statusDiv.style.color = "green";
-                // Opcjonalnie: odśwież stronę po 2 sekundach
+                // Optionally refresh page after 2 seconds
                 setTimeout(() => window.location.href = "/teams", 2000);
             } else {
-                statusDiv.innerText = "Błąd serwera: " + (result.detail || "Nieznany błąd");
+                statusDiv.innerText = "Server error: " + (result.detail || "Unknown error");
                 statusDiv.style.color = "red";
             }
 
         } catch (error) {
             console.error(error);
-            statusDiv.innerText = "Błąd połączenia";
+            statusDiv.innerText = "Connection error";
             statusDiv.style.color = "red";
         }
     }

@@ -20,19 +20,12 @@ templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/", response_class=HTMLResponse)
-def index(request: Request, db: Session = Depends(get_db)):
-    players_db = db.query(models.Player).options(joinedload(models.Player.team)).all()
-    players_data = [
-        schemas.PlayerWithTeam.model_validate(p).model_dump(mode='json')
-        for p in players_db
-    ]
-
-    teams = db.query(models.Team).order_by(models.Team.name).all()
-
+def index(request: Request):
+    """
+    Strona główna - statyczna strona informacyjna.
+    """
     return templates.TemplateResponse("index.html", {
-        "request": request,
-        "players": players_data,
-        "teams": teams  # Przekazujemy do szablonu
+        "request": request
     })
 
 
@@ -191,4 +184,22 @@ def ranking_view(request: Request, tournament_id: Optional[str] = None, db: Sess
         "ranking": ranking_data,
         "tournaments": tournaments,
         "selected_tournament_id": tid_int  # Przekazujemy przetworzone ID
+    })
+
+@router.get("/players", response_class=HTMLResponse)
+def players_page(request: Request, db: Session = Depends(get_db)):
+    """
+    Strona z siatką wszystkich graczy.
+    """
+    players_db = db.query(models.Player).options(joinedload(models.Player.team)).all()
+    players_data = [
+        schemas.PlayerWithTeam.model_validate(p).model_dump(mode='json')
+        for p in players_db
+    ]
+    teams = db.query(models.Team).order_by(models.Team.name).all()
+
+    return templates.TemplateResponse("players.html", {
+        "request": request,
+        "players": players_data,
+        "teams": teams
     })
