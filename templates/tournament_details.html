@@ -25,6 +25,16 @@
     </div>
 </div>
 
+<div class="card" style="display: flex; justify-content: space-between; align-items: center; background: #fdfdfd; border-left: 5px solid #27ae60; padding: 15px; margin-top: 15px;">
+    <div>
+        <strong style="color: #333; display: block; font-size: 1.1rem;">Zarządzanie wynikami</strong>
+        <span style="font-size: 0.8rem; color: #777;">Zapisz jednocześnie wszystkie wprowadzone rundy dla drużyn i ratingi dla graczy.</span>
+    </div>
+    <button id="saveAllBtn" onclick="saveAllChanges()" class="btn" style="background: #27ae60; padding: 10px 20px; font-size: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        💾 Zapisz wszystko
+    </button>
+</div>
+
 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-top: 20px;">
 
     <div class="card">
@@ -46,7 +56,6 @@
                     <label for="semisCheck">Start w półfinale</label>
                 </div>
                 {% endif %}
-
             </form>
         </div>
 
@@ -54,53 +63,54 @@
             {% for p in participations %}
             <li style="padding: 10px; border-bottom: 1px solid #eee;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
-                    <strong style="font-size: 1.1em;">{{ p.team.name }}</strong>
+                    <strong style="font-size: 1.1em;">
+                        {{ p.team.name }}
+                        {% if p.starts_in_semis %}
+                        <span style="font-size: 0.7rem; color: #27ae60; font-weight: normal; margin-left: 5px;">(Start w SF)</span>
+                        {% endif %}
+                    </strong>
                     <button onclick="removeTeam({{ p.team.id }})" style="background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.7rem;">Usuń</button>
                 </div>
 
-                {% if p.starts_in_semis %}
-                <div style="font-size: 0.75rem; color: green; margin-bottom: 5px;">(Start w Półfinale)</div>
-                {% endif %}
-
-                <form onsubmit="updateTeamStats(event, {{ p.team.id }}, {{ p.starts_in_semis|lower }})" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(50px, 1fr)) auto; gap: 5px; align-items: end;">
+                <form class="team-stats-form" data-team-id="{{ p.team.id }}" data-starts-in-semis="{{ 'true' if p.starts_in_semis else 'false' }}" onsubmit="updateTeamStats(event, {{ p.team.id }}, {{ p.starts_in_semis|lower }})" style="display: flex; flex-wrap: nowrap; gap: 6px; align-items: flex-end; overflow-x: auto; padding-bottom: 5px;">
 
                     <div style="text-align: center;">
-                        <label style="font-size: 0.7rem; display:block;">Group</label>
-                        <input type="number" name="rounds_group" value="{{ p.rounds_group }}" min="0" style="width: 100%; min-width: 40px; padding: 3px; text-align: center;">
+                        <label style="font-size: 0.65rem; display:block; color: #555;">Grp</label>
+                        <input type="number" name="rounds_group" value="{{ p.rounds_group }}" min="0" style="width: 45px; padding: 3px; text-align: center; font-size: 0.9rem;">
                     </div>
 
                     {% if p.starts_in_semis %}
                          <div style="text-align: center; opacity: 0.5;">
-                            <label style="font-size: 0.7rem; display:block;">QF</label>
-                            <input type="number" value="0" disabled style="width: 100%; min-width: 40px; padding: 3px; text-align: center; background: #eee;">
+                            <label style="font-size: 0.65rem; display:block; color: #555;">QF</label>
+                            <input type="number" value="0" disabled style="width: 45px; padding: 3px; text-align: center; background: #eee; font-size: 0.9rem;">
                         </div>
                     {% else %}
                         <div style="text-align: center;">
-                            <label style="font-size: 0.7rem; display:block;">QF</label>
-                            <input type="number" name="rounds_quarters" value="{{ p.rounds_quarters }}" min="0" style="width: 100%; min-width: 40px; padding: 3px; text-align: center;">
+                            <label style="font-size: 0.65rem; display:block; color: #555;">QF</label>
+                            <input type="number" name="rounds_quarters" value="{{ p.rounds_quarters }}" min="0" style="width: 45px; padding: 3px; text-align: center; font-size: 0.9rem;">
                         </div>
                     {% endif %}
 
                     <div style="text-align: center;">
-                        <label style="font-size: 0.7rem; display:block;">SF</label>
-                        <input type="number" name="rounds_semis" value="{{ p.rounds_semis }}" min="0" style="width: 100%; min-width: 40px; padding: 3px; text-align: center;">
+                        <label style="font-size: 0.65rem; display:block; color: #555;">SF</label>
+                        <input type="number" name="rounds_semis" value="{{ p.rounds_semis }}" min="0" style="width: 45px; padding: 3px; text-align: center; font-size: 0.9rem;">
                     </div>
 
                     <div style="text-align: center;">
-                        <label style="font-size: 0.7rem; display:block;">Final</label>
-                        <input type="number" name="rounds_final" value="{{ p.rounds_final }}" min="0" style="width: 100%; min-width: 40px; padding: 3px; text-align: center;">
+                        <label style="font-size: 0.65rem; display:block; color: #555;">Final</label>
+                        <input type="number" name="rounds_final" value="{{ p.rounds_final }}" min="0" style="width: 45px; padding: 3px; text-align: center; font-size: 0.9rem;">
                     </div>
 
                     {% if tournament.has_third_place %}
                     <div style="text-align: center;">
-                        <label style="font-size: 0.7rem; display:block; color: #d35400;">3rd</label>
-                        <input type="number" name="rounds_third_place" value="{{ p.rounds_third_place }}" min="0" style="width: 100%; min-width: 40px; padding: 3px; text-align: center; border: 1px solid #d35400;">
+                        <label style="font-size: 0.65rem; display:block; color: #d35400;">3rd</label>
+                        <input type="number" name="rounds_third_place" value="{{ p.rounds_third_place }}" min="0" style="width: 45px; padding: 3px; text-align: center; border: 1px solid #d35400; font-size: 0.9rem;">
                     </div>
                     {% else %}
                         <input type="hidden" name="rounds_third_place" value="0">
                     {% endif %}
 
-                    <button type="submit" class="btn" style="padding: 4px 8px; font-size: 0.8rem; background-color: #3498db; height: 28px;">Zapisz</button>
+                    <button type="submit" class="btn" style="padding: 4px 8px; font-size: 0.75rem; background-color: #bdc3c7; color: #333; height: 26px; margin-left: auto;" title="Zapisz tylko tę drużynę">Zapisz</button>
                 </form>
             </li>
             {% else %}
@@ -130,32 +140,32 @@
                 <tbody>
                     {% for player in players %}
                     {% set perf = perfs_dict.get(player.id) %}
-                    <tr id="row-{{ player.id }}">
+                    <tr id="row-{{ player.id }}" class="player-rating-row" data-player-id="{{ player.id }}">
                         <td>
                             <div style="font-weight: bold;">{{ player.nickname }}</div>
                         </td>
                         <td style="font-size: 0.8rem;">{{ player.team.name }}</td>
 
-                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_group" value="{{ perf.rating_group if perf and perf.rating_group else '' }}" style="width: 70px; padding: 5px;"></td>
+                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_group" value="{{ perf.rating_group if perf and perf.rating_group else '' }}" style="width: 65px; padding: 4px;"></td>
 
                         <td style="text-align: center;">
                             {% if player.team_id in semis_team_ids %}
                                 <span style="font-size: 0.8rem; color: #ccc; font-style: italic;">Skip</span>
                                 <input type="hidden" class="rating-input" data-field="rating_quarters" value="">
                             {% else %}
-                                <input type="number" step="0.01" class="rating-input" data-field="rating_quarters" value="{{ perf.rating_quarters if perf and perf.rating_quarters else '' }}" style="width: 70px; padding: 5px;">
+                                <input type="number" step="0.01" class="rating-input" data-field="rating_quarters" value="{{ perf.rating_quarters if perf and perf.rating_quarters else '' }}" style="width: 65px; padding: 4px;">
                             {% endif %}
                         </td>
 
-                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_semis" value="{{ perf.rating_semis if perf and perf.rating_semis else '' }}" style="width: 70px; padding: 5px;"></td>
-                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_final" value="{{ perf.rating_final if perf and perf.rating_final else '' }}" style="width: 70px; padding: 5px;"></td>
+                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_semis" value="{{ perf.rating_semis if perf and perf.rating_semis else '' }}" style="width: 65px; padding: 4px;"></td>
+                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_final" value="{{ perf.rating_final if perf and perf.rating_final else '' }}" style="width: 65px; padding: 4px;"></td>
 
                         {% if tournament.has_third_place %}
-                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_third_place" value="{{ perf.rating_third_place if perf and perf.rating_third_place else '' }}" style="width: 70px; padding: 5px; border-color: #d35400;"></td>
+                        <td><input type="number" step="0.01" class="rating-input" data-field="rating_third_place" value="{{ perf.rating_third_place if perf and perf.rating_third_place else '' }}" style="width: 65px; padding: 4px; border-color: #d35400;"></td>
                         {% endif %}
 
                         <td>
-                            <button onclick="saveRating({{ player.id }})" class="btn" style="background: #27ae60; padding: 5px 10px; font-size: 0.8rem;">Zapisz</button>
+                            <button onclick="saveRating({{ player.id }})" class="btn individual-rating-save" style="background: #bdc3c7; color: #333; padding: 4px 8px; font-size: 0.75rem;" title="Zapisz tylko tego gracza">Zapisz</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -231,7 +241,7 @@
         }
     }
 
-    // --- ZAPISYWANIE RATINGÓW (DYNAMICZNE) ---
+    // --- ZAPISYWANIE RATINGÓW (INDYWIDUALNE) ---
     async function saveRating(playerId) {
         const row = document.getElementById(`row-${playerId}`);
         const inputs = row.querySelectorAll('.rating-input');
@@ -241,7 +251,6 @@
             tournament_id: TOURNAMENT_ID
         };
 
-        // Dynamicznie zbieramy dane z inputów (dzięki data-field)
         inputs.forEach(input => {
             const fieldName = input.getAttribute('data-field');
             if (fieldName) {
@@ -249,7 +258,7 @@
             }
         });
 
-        const btn = row.querySelector('button');
+        const btn = row.querySelector('.individual-rating-save');
         const originalText = btn.innerText;
         btn.innerText = "⏳";
         btn.disabled = true;
@@ -264,9 +273,11 @@
             if (response.ok) {
                 btn.innerText = "✔";
                 btn.style.backgroundColor = "#2ecc71";
+                btn.style.color = "white";
                 setTimeout(() => {
                     btn.innerText = originalText;
-                    btn.style.backgroundColor = "#27ae60";
+                    btn.style.backgroundColor = "#bdc3c7";
+                    btn.style.color = "#333";
                     btn.disabled = false;
                 }, 1500);
             } else {
@@ -281,7 +292,7 @@
         }
     }
 
-    // --- AKTUALIZACJA STATYSTYK DRUŻYNY (RUNDY) ---
+    // --- AKTUALIZACJA STATYSTYK DRUŻYNY (INDYWIDUALNA) ---
     async function updateTeamStats(event, teamId, startsInSemis) {
         event.preventDefault();
         const form = event.target;
@@ -309,22 +320,115 @@
             });
 
             if (response.ok) {
-                btn.innerText = "OK";
+                btn.innerText = "✔";
                 btn.style.backgroundColor = "#2ecc71";
+                btn.style.color = "white";
                 setTimeout(() => {
                     btn.innerText = originalText;
-                    btn.style.backgroundColor = "#3498db";
+                    btn.style.backgroundColor = "#bdc3c7";
+                    btn.style.color = "#333";
                     btn.disabled = false;
                 }, 1000);
             } else {
                 alert("Błąd zapisu rund");
-                btn.innerText = "Błąd";
+                btn.innerText = "❌";
                 btn.disabled = false;
             }
         } catch (e) {
             console.error(e);
             alert("Błąd połączenia");
             btn.disabled = false;
+        }
+    }
+
+    // --- NOWE: ZAPISYWANIE WSZYSTKICH DANYCH NARAZ ---
+    async function saveAllChanges() {
+        const btn = document.getElementById('saveAllBtn');
+        const originalText = btn.innerText;
+        btn.innerText = "⏳ Trwa zapisywanie wszystkich danych...";
+        btn.disabled = true;
+
+        try {
+            // 1. Zbieramy promisy z formularzy DRUŻYN
+            const teamForms = document.querySelectorAll('.team-stats-form');
+            const teamPromises = Array.from(teamForms).map(form => {
+                const teamId = form.getAttribute('data-team-id');
+                const startsInSemis = form.getAttribute('data-starts-in-semis') === 'true';
+
+                return fetch(`/api/tournaments/${TOURNAMENT_ID}/add_team`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        team_id: parseInt(teamId),
+                        starts_in_semis: startsInSemis,
+                        rounds_group: parseInt(form.rounds_group.value) || 0,
+                        rounds_quarters: form.rounds_quarters ? (parseInt(form.rounds_quarters.value) || 0) : 0,
+                        rounds_semis: parseInt(form.rounds_semis.value) || 0,
+                        rounds_final: parseInt(form.rounds_final.value) || 0,
+                        rounds_third_place: form.rounds_third_place ? (parseInt(form.rounds_third_place.value) || 0) : 0
+                    })
+                });
+            });
+
+            // 2. Zbieramy promisy z wierszy GRACZY (Ratingi)
+            const playerRows = document.querySelectorAll('.player-rating-row');
+            const playerPromises = Array.from(playerRows).map(row => {
+                const playerId = row.getAttribute('data-player-id');
+                const inputs = row.querySelectorAll('.rating-input');
+
+                const data = {
+                    player_id: parseInt(playerId),
+                    tournament_id: TOURNAMENT_ID
+                };
+
+                inputs.forEach(input => {
+                    const fieldName = input.getAttribute('data-field');
+                    if (fieldName) {
+                        data[fieldName] = input.value ? parseFloat(input.value) : null;
+                    }
+                });
+
+                return fetch("/api/performances/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data)
+                });
+            });
+
+            // Oczekiwanie na ukończenie wszystkich zapisów (drużyn i graczy)
+            const allPromises = [...teamPromises, ...playerPromises];
+
+            if (allPromises.length === 0) {
+                alert("Brak danych do zapisania (dodaj najpierw drużyny do turnieju).");
+                btn.innerText = originalText;
+                btn.disabled = false;
+                return;
+            }
+
+            // Uruchomienie wszystkich żądań asynchronicznie (współbieżnie)
+            await Promise.all(allPromises);
+
+            // Po sukcesie:
+            btn.innerText = "✔ Zapisano pomyślnie!";
+            btn.style.backgroundColor = "#27ae60"; // Mocny zielony
+
+            setTimeout(() => {
+                btn.innerText = originalText;
+                // Powrót do pierwotnego koloru z parametru style (lub zostawienie zielonego na znak sukcesu)
+                btn.disabled = false;
+            }, 2500);
+
+        } catch (e) {
+            console.error("Błąd podczas zapisywania grupowego:", e);
+            btn.innerText = "❌ Wystąpił błąd!";
+            btn.style.backgroundColor = "#e74c3c"; // Czerwony
+
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.backgroundColor = "#27ae60";
+                btn.disabled = false;
+            }, 3000);
+            alert("Niektóre dane mogły nie zostać zapisane z powodu błędu sieci.");
         }
     }
 </script>
