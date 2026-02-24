@@ -38,6 +38,8 @@ class Tournament(Base):
     __tablename__ = "tournaments"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
+    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+
     bracket_type: Mapped[str] = mapped_column(String, default="Bracket 8 teams")
     weight: Mapped[float] = mapped_column(Float, default=1.0)
 

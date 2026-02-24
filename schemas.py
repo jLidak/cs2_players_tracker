@@ -33,6 +33,7 @@ class PlayerWithTeam(Player):
 # --- TOURNAMENTS ---
 class TournamentBase(BaseModel):
     name: str
+    start_date: Optional[date] = None  # NOWE POLE
     bracket_type: str = "Bracket 8 teams"
     weight: float = 1.0
 
@@ -52,6 +53,7 @@ class TournamentCreate(TournamentBase): pass
 
 class TournamentUpdate(BaseModel):
     name: Optional[str] = None
+    start_date: Optional[date] = None
     bracket_type: Optional[str] = None
     weight: Optional[float] = None
     weight_group: Optional[float] = None # Zmiana

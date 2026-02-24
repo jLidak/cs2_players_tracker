@@ -1,16 +1,20 @@
 """
 Widoki HTML (Frontend).
 Zaktualizowane: Przekazuje listę ID drużyn startujących w półfinale do szablonu.
+Posortowane turnieje według daty rozpoczęcia.
 """
 from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
-from typing import Optional # <--- WAŻNY IMPORT
+from typing import Optional
 import models
 import schemas
 from database import get_db
-from routers.ranking import RANKING_BASE_MULTIPLIER, RANKING_ROUNDS_ROOT, RANKING_RATING_EXPONENT_DIV, RANKING_BONUS
+
+# TUTAJ BRAKOWAŁO IMPORTU get_ranking
+from routers.ranking import get_ranking, RANKING_BASE_MULTIPLIER, RANKING_ROUNDS_ROOT, RANKING_RATING_EXPONENT_DIV, RANKING_BONUS
+
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory="templates")
 
@@ -32,18 +36,9 @@ def index(request: Request, db: Session = Depends(get_db)):
     })
 
 
-# @router.get("/ranking", response_class=HTMLResponse)
-# def ranking_page(request: Request, db: Session = Depends(get_db)):
-#     ranking_data = get_ranking(db)
-#     return templates.TemplateResponse("ranking.html", {
-#         "request": request,
-#         "ranking": ranking_data
-#     })
-
-
 @router.get("/tournaments", response_class=HTMLResponse)
 def tournaments_page(request: Request, db: Session = Depends(get_db)):
-    tournaments = db.query(models.Tournament).all()
+    tournaments = db.query(models.Tournament).order_by(models.Tournament.start_date).all()
     return templates.TemplateResponse("tournaments.html", {
         "request": request,
         "tournaments": tournaments
@@ -70,7 +65,7 @@ def tournament_details(request: Request, tournament_id: int, db: Session = Depen
 
     participating_team_ids = [p.team_id for p in participations]
 
-    # --- NOWOŚĆ: Lista ID drużyn, które zaczynają od półfinału ---
+    # --- Lista ID drużyn, które zaczynają od półfinału ---
     semis_team_ids = {p.team_id for p in participations if p.starts_in_semis}
     # -------------------------------------------------------------
 
@@ -93,18 +88,20 @@ def tournament_details(request: Request, tournament_id: int, db: Session = Depen
         "semis_team_ids": semis_team_ids # Przekazujemy do szablonu
     })
 
-# Reszta widoków bez zmian...
+
 @router.get("/teams", response_class=HTMLResponse)
 def teams_page(request: Request, db: Session = Depends(get_db)):
     teams = db.query(models.Team).all()
     return templates.TemplateResponse("teams.html", {"request": request, "teams": teams})
 
+
 @router.get("/matches", response_class=HTMLResponse)
 def matches_page(request: Request, db: Session = Depends(get_db)):
     matches = db.query(models.Match).all()
-    tournaments = db.query(models.Tournament).all()
+    tournaments = db.query(models.Tournament).order_by(models.Tournament.start_date).all()
     teams = db.query(models.Team).all()
     return templates.TemplateResponse("matches.html", {"request": request, "matches": matches, "tournaments": tournaments, "teams": teams})
+
 
 @router.get("/player/{player_id}", response_class=HTMLResponse)
 def player_profile(request: Request, player_id: int, db: Session = Depends(get_db)):
@@ -124,6 +121,8 @@ def player_profile(request: Request, player_id: int, db: Session = Depends(get_d
         "player": player,
         "all_teams": all_teams # Przekazujemy do szablonu
     })
+
+
 @router.get("/import-json", response_class=HTMLResponse)
 def import_json_page(request: Request):
     return templates.TemplateResponse("json_import.html", {"request": request})
@@ -131,7 +130,7 @@ def import_json_page(request: Request):
 
 @router.get("/custom-ranking", response_class=HTMLResponse)
 def custom_ranking_view(request: Request, db: Session = Depends(get_db)):
-    tournaments = db.query(models.Tournament).order_by(models.Tournament.id.desc()).all()
+    tournaments = db.query(models.Tournament).order_by(models.Tournament.start_date).all()
     presets = db.query(models.CustomRankingPreset).order_by(models.CustomRankingPreset.name).all()
 
     return templates.TemplateResponse("custom_ranking.html", {
@@ -143,6 +142,8 @@ def custom_ranking_view(request: Request, db: Session = Depends(get_db)):
         "rating_exp": RANKING_RATING_EXPONENT_DIV,
         "bonus_val": RANKING_BONUS
     })
+
+
 @router.get("/ranking", response_class=HTMLResponse)
 def ranking_view(request: Request, tournament_id: Optional[str] = None, db: Session = Depends(get_db)):
     """
@@ -161,7 +162,7 @@ def ranking_view(request: Request, tournament_id: Optional[str] = None, db: Sess
             tid_int = None
 
     # 2. Pobieramy listę turniejów do filtra
-    tournaments = db.query(models.Tournament).order_by(models.Tournament.id.desc()).all()
+    tournaments = db.query(models.Tournament).order_by(models.Tournament.start_date).all()
 
     # 3. Obliczamy ranking (przekazujemy już poprawny int lub None)
     ranking_data = get_ranking(db=db, tournament_id=tid_int)
@@ -172,4 +173,3 @@ def ranking_view(request: Request, tournament_id: Optional[str] = None, db: Sess
         "tournaments": tournaments,
         "selected_tournament_id": tid_int  # Przekazujemy przetworzone ID
     })
-

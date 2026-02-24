@@ -11,6 +11,7 @@
         <form id="createTournamentForm" onsubmit="createTournament(event)">
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
                 <div><label>Nazwa turnieju:</label><input type="text" name="name" required style="width: 100%; padding: 8px;"></div>
+                <div><label>Data rozp. (opcjonalnie):</label><input type="date" name="start_date" style="width: 100%; padding: 8px;"></div>
                 <div><label>Waga Turnieju:</label><input type="number" step="0.01" name="weight" value="1.0" required style="width: 100%; padding: 8px; font-weight: bold;"></div>
                 <div>
                     <label>Typ Drabinki:</label>
@@ -66,6 +67,7 @@
         <thead>
             <tr>
                 <th>ID</th>
+                <th>Data</th>
                 <th>Nazwa</th>
                 <th>Waga</th>
                 <th>Typ</th>
@@ -77,6 +79,7 @@
             {% for t in tournaments %}
             <tr>
                 <td>{{ t.id }}</td>
+                <td>{{ t.start_date if t.start_date else '-' }}</td>
                 <td>{{ t.name }}</td>
                 <td><strong>{{ t.weight }}</strong></td>
                 <td><span class="badge" style="background: #3498db;">{{ t.bracket_type }}</span></td>
@@ -88,6 +91,7 @@
                     <button onclick='openEditModal({
                         id: {{ t.id }},
                         name: "{{ t.name }}",
+                        start_date: "{{ t.start_date or '' }}",
                         weight: {{ t.weight }},
                         bracket_type: "{{ t.bracket_type }}",
                         weight_group: {{ t.weight_group }},
@@ -117,6 +121,7 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                 <div><label>Nazwa:</label><input type="text" name="name" id="editName" style="width: 100%;"></div>
                 <div><label>Waga (Mnożnik):</label><input type="number" step="0.01" name="weight" id="editWeight" style="width: 100%;"></div>
+                <div><label>Data rozp.:</label><input type="date" name="start_date" id="editStartDate" style="width: 100%;"></div>
             </div>
 
             <div style="margin-bottom: 10px;">
@@ -188,8 +193,11 @@
         event.preventDefault();
         const form = event.target;
 
+        const startDate = form.start_date.value;
+
         const data = {
             name: form.name.value,
+            start_date: startDate ? startDate : null,
             bracket_type: form.bracket_type.value,
             weight: parseFloat(form.weight.value),
             weight_group: parseFloat(form.weight_group.value),
@@ -220,12 +228,19 @@
             if (response.ok) {
                 window.location.reload();
             } else {
-                const err = await response.json();
-                alert("Błąd: " + (err.detail || "Nie udało się utworzyć turnieju"));
+                // Bezpieczne sprawdzanie odpowiedzi z serwera
+                let errMsg = "Nie udało się utworzyć turnieju.";
+                try {
+                    const err = await response.json();
+                    errMsg = err.detail || errMsg;
+                } catch(e) {
+                    errMsg = `Błąd serwera (kod ${response.status})`;
+                }
+                alert("Błąd: " + errMsg);
             }
         } catch (e) {
             console.error(e);
-            alert("Błąd sieci");
+            alert("Krytyczny błąd połączenia.");
         }
     }
 
@@ -250,8 +265,11 @@
         const has3rd = document.getElementById('editHasThirdPlace').checked;
         const weight3rd = has3rd ? parseFloat(document.getElementById('editWeightThirdPlace').value || 0) : 0.0;
 
+        const startDate = formData.get("start_date");
+
         const data = {
             name: formData.get("name"),
+            start_date: startDate ? startDate : null,
             weight: getFloat(formData, "weight"),
             bracket_type: formData.get("bracket_type"),
             weight_group: wG,
@@ -267,12 +285,6 @@
         await sendRequest(`/api/tournaments/${id}`, "PUT", data);
     }
 
-    async function deleteTournament(id) {
-        if(confirm("Czy na pewno usunąć ten turniej?")) {
-            await sendRequest(`/api/tournaments/${id}`, "DELETE", null);
-        }
-    }
-
     async function sendRequest(url, method, data) {
         try {
             const options = { method: method, headers: { "Content-Type": "application/json" } };
@@ -282,18 +294,32 @@
             if (response.ok) {
                 window.location.reload();
             } else {
-                const err = await response.json();
-                alert("Błąd: " + (err.detail || "Wystąpił błąd operacji"));
+                let errMsg = "Wystąpił nieznany błąd operacji.";
+                try {
+                    const err = await response.json();
+                    errMsg = err.detail || errMsg;
+                } catch(e) {
+                    errMsg = `Błąd serwera (kod ${response.status})`;
+                }
+                alert("Błąd: " + errMsg);
             }
         } catch (e) {
             console.error(e);
-            alert("Błąd sieci");
+            alert("Krytyczny błąd sieci.");
         }
     }
+
+    async function deleteTournament(id) {
+        if(confirm("Czy na pewno usunąć ten turniej?")) {
+            await sendRequest(`/api/tournaments/${id}`, "DELETE", null);
+        }
+    }
+
 
     function openEditModal(t) {
         document.getElementById('editId').value = t.id;
         document.getElementById('editName').value = t.name;
+        document.getElementById('editStartDate').value = t.start_date;
         document.getElementById('editWeight').value = t.weight;
         document.getElementById('editBracketType').value = t.bracket_type;
         document.getElementById('editWeightGroup').value = t.weight_group;

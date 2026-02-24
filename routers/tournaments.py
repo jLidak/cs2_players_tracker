@@ -4,6 +4,7 @@ Obsługa turniejów: Tworzenie, edycja, usuwanie, dodawanie drużyn, wpisywanie 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError  # <--- NOWY IMPORT
 import models
 import schemas
 from database import get_db
@@ -12,7 +13,7 @@ router = APIRouter(tags=["Tournaments"])
 
 @router.get("/api/tournaments/", response_model=List[schemas.Tournament])
 def get_tournaments(db: Session = Depends(get_db)):
-    return db.query(models.Tournament).all()
+    return db.query(models.Tournament).order_by(models.Tournament.start_date).all()
 
 
 @router.post("/api/tournaments/", response_model=schemas.Tournament)
@@ -33,16 +34,10 @@ def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depend
 
     # 2. Walidacja ścieżki skróconej (tylko dla Bracket 6)
     if tournament.bracket_type == "Bracket 6 teams":
-        # Jeśli użytkownik nie podał override'ów, możemy je tu opcjonalnie wyliczyć automatycznie,
-        # albo wymagać ich podania. Tutaj zakładam, że jeśli są podane (nie None), to muszą się sumować.
-        # Jeśli są None, backend może je uzupełnić lub zostawić puste (zależy od logiki biznesowej).
-        # Przyjmijmy wersję: Jeśli podano którekolwiek override, sprawdzamy sumę tych trzech.
-
         wg = tournament.weight_group_override if tournament.weight_group_override is not None else 0.0
         ws = tournament.weight_semis_override if tournament.weight_semis_override is not None else 0.0
         wf = tournament.weight_final_override if tournament.weight_final_override is not None else 0.0
 
-        # Sprawdzamy tylko, jeśli użytkownik wpisał cokolwiek w override'ach
         if wg > 0 or ws > 0 or wf > 0:
             total_override = wg + ws + wf
             if abs(total_override - 1.0) > 0.001:
@@ -53,10 +48,15 @@ def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depend
 
     db_tournament = models.Tournament(**tournament.model_dump())
     db.add(db_tournament)
-    db.commit()
-    db.refresh(db_tournament)
-    return db_tournament
 
+    # 3. Zapis do bazy z obsługą błędu (np. duplikatu nazwy)
+    try:
+        db.commit()
+        db.refresh(db_tournament)
+        return db_tournament
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Turniej o nazwie '{tournament.name}' już istnieje w bazie!")
 
 
 @router.put("/api/tournaments/{tournament_id}", response_model=schemas.Tournament)
@@ -66,7 +66,7 @@ def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Se
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
 
-    # 1. Walidacja standardowych wag (musi sumować się do 1.0)
+    # 1. Walidacja standardowych wag
     weights_to_check = ['weight_group', 'weight_quarters', 'weight_semis', 'weight_final']
     if any(getattr(data, w) is not None for w in weights_to_check):
         proposed_weights = {}
@@ -82,11 +82,9 @@ def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Se
             )
 
     # 2. Walidacja wag dla ścieżki skróconej (Bracket 6)
-    # Sprawdzamy typ turnieju (nowy z danych lub stary z bazy)
     effective_bracket_type = data.bracket_type if data.bracket_type is not None else tournament.bracket_type
 
     if effective_bracket_type == "Bracket 6 teams":
-        # Funkcja pomocnicza do pobierania "efektywnej" wartości wagi (nowa > stara > 0.0)
         def get_val(attr_name):
             val = getattr(data, attr_name)
             if val is not None:
@@ -98,13 +96,12 @@ def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Se
         ws = get_val('weight_semis_override')
         wf = get_val('weight_final_override')
 
-        # Jeśli którykolwiek override jest ustawiony (>0), sprawdzamy czy suma to 1.0
         if wg > 0 or ws > 0 or wf > 0:
             total_override = wg + ws + wf
             if abs(total_override - 1.0) > 0.001:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Suma wag dla ścieżki skróconej (Group Override + SF Override + Final Override) musi wynosić 1.0. Obecnie wynosi: {total_override:.2f}"
+                    detail=f"Suma wag dla ścieżki skróconej musi wynosić 1.0. Obecnie wynosi: {total_override:.2f}"
                 )
 
     # Aktualizacja pól w bazie
@@ -112,9 +109,14 @@ def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Se
     for key, value in update_data.items():
         setattr(tournament, key, value)
 
-    db.commit()
-    db.refresh(tournament)
-    return tournament
+    try:
+        db.commit()
+        db.refresh(tournament)
+        return tournament
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Turniej o takiej nazwie już istnieje w bazie!")
+
 @router.delete("/api/tournaments/{tournament_id}")
 def delete_tournament(tournament_id: int, db: Session = Depends(get_db)):
     tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
@@ -147,7 +149,7 @@ def add_team_to_tournament(
         exists.rounds_quarters = data.rounds_quarters
         exists.rounds_semis = data.rounds_semis
         exists.rounds_final = data.rounds_final
-        exists.rounds_third_place = data.rounds_third_place  # Aktualizacja
+        exists.rounds_third_place = data.rounds_third_place
     else:
         # Tworzenie nowego wpisu
         new_entry = models.TournamentTeam(
@@ -158,7 +160,7 @@ def add_team_to_tournament(
             rounds_quarters=data.rounds_quarters,
             rounds_semis=data.rounds_semis,
             rounds_final=data.rounds_final,
-            rounds_third_place = data.rounds_third_place  # Nowy
+            rounds_third_place = data.rounds_third_place
         )
         db.add(new_entry)
 
@@ -170,7 +172,6 @@ def set_player_performance(
     perf: schemas.PlayerTournamentPerformanceCreate,
     db: Session = Depends(get_db)
 ):
-    """Ustawia ratingi gracza. Zmieniono rating_overall na rating_group."""
     existing = db.query(models.PlayerTournamentPerformance).filter(
         models.PlayerTournamentPerformance.tournament_id == perf.tournament_id,
         models.PlayerTournamentPerformance.player_id == perf.player_id
@@ -181,7 +182,7 @@ def set_player_performance(
         if perf.rating_quarters is not None: existing.rating_quarters = perf.rating_quarters
         if perf.rating_semis is not None: existing.rating_semis = perf.rating_semis
         if perf.rating_final is not None: existing.rating_final = perf.rating_final
-        if perf.rating_third_place is not None: existing.rating_third_place = perf.rating_third_place  # Update
+        if perf.rating_third_place is not None: existing.rating_third_place = perf.rating_third_place
         db.commit()
         db.refresh(existing)
         return existing
@@ -194,10 +195,6 @@ def set_player_performance(
 
 @router.delete("/api/tournaments/{tournament_id}/teams/{team_id}")
 def remove_team_from_tournament(tournament_id: int, team_id: int, db: Session = Depends(get_db)):
-    """
-    Usuwa drużynę z turnieju oraz usuwa wyniki (ratingi) graczy tej drużyny w tym turnieju.
-    """
-    # 1. Szukamy wpisu w tabeli łączącej (udział w turnieju)
     participation = db.query(models.TournamentTeam).filter(
         models.TournamentTeam.tournament_id == tournament_id,
         models.TournamentTeam.team_id == team_id
@@ -206,8 +203,6 @@ def remove_team_from_tournament(tournament_id: int, team_id: int, db: Session = 
     if not participation:
         raise HTTPException(status_code=404, detail="Ta drużyna nie bierze udziału w tym turnieju")
 
-    # 2. Usuwamy wyniki (performances) graczy tej drużyny z tego turnieju
-    # Najpierw znajdujemy graczy tej drużyny
     team_players = db.query(models.Player).filter(models.Player.team_id == team_id).all()
     player_ids = [p.id for p in team_players]
 
@@ -217,8 +212,6 @@ def remove_team_from_tournament(tournament_id: int, team_id: int, db: Session = 
             models.PlayerTournamentPerformance.player_id.in_(player_ids)
         ).delete(synchronize_session=False)
 
-    # 3. Usuwamy wpis o udziale drużyny
     db.delete(participation)
     db.commit()
-
     return {"message": "Drużyna została usunięta z turnieju"}
