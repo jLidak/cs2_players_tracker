@@ -4,12 +4,16 @@ Moduł konfiguracyjny bazy danych SQLite dla aplikacji CS2 Player Tracker.
 Zawiera inicjalizację silnika SQLAlchemy oraz funkcję do uzyskiwania sesji bazodanowej.
 """
 
+import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./cs2_tracker.db"
+load_dotenv()
+
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./cs2_tracker.db")
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 

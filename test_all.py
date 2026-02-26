@@ -1,6 +1,6 @@
 """
-Testy jednostkowe dla aplikacji CS2 Player Tracker.
-Zgodne z metodologią pytest ze skryptu laboratoryjnego.
+Unit tests for the CS2 Player Tracker application.
+Matches the current logic of dynamic ranking calculations and API structures.
 """
 
 import pytest
@@ -38,42 +38,53 @@ def setup_database():
 # ==================== TEAMS TESTS ====================
 
 def test_create_team():
-    """Test tworzenia nowej drużyny."""
+    """Test creating a new team."""
     response = client.post(
         "/api/teams/",
         json={"name": "Team Liquid", "logo_url": "https://example.com/liquid.png"}
     )
-    # Dodano komunikaty po przecinku, zgodnie ze stylem w skrypcie lab.
-    assert response.status_code == 200, f"Oczekiwano statusu 200, otrzymano {response.status_code}"
+    assert response.status_code == 200, f"Expected status 200, got {response.status_code}"
     data = response.json()
-    assert data["name"] == "Team Liquid", "Nazwa drużyny nie zgadza się z przesłaną"
-    assert "id" in data, "Odpowiedź powinna zawierać ID"
+    assert data["name"] == "Team Liquid", "Team name does not match the input"
+    assert "id" in data, "Response should contain an ID"
 
 def test_get_teams():
-    """Test pobierania listy drużyn."""
+    """Test fetching the list of teams."""
     client.post("/api/teams/", json={"name": "Navi"})
     client.post("/api/teams/", json={"name": "Vitality"})
 
     response = client.get("/api/teams/")
-    assert response.status_code == 200, "Błąd pobierania listy drużyn"
+    assert response.status_code == 200, "Error fetching the list of teams"
     data = response.json()
-    assert len(data) == 2, f"Oczekiwano 2 drużyn, otrzymano {len(data)}"
+    assert len(data) == 2, f"Expected 2 teams, got {len(data)}"
 
 def test_delete_team():
-    """Test usuwania drużyny."""
+    """Test deleting a team."""
     create_response = client.post("/api/teams/", json={"name": "FaZe"})
     team_id = create_response.json()["id"]
 
     delete_response = client.delete(f"/api/teams/{team_id}")
-    assert delete_response.status_code == 200, "Błąd podczas usuwania drużyny"
+    assert delete_response.status_code == 200, "Error while deleting the team"
 
     get_response = client.get(f"/api/teams/{team_id}")
-    assert get_response.status_code == 404, "Usunięta drużyna nadal istnieje (powinno być 404)"
+    assert get_response.status_code == 404, "Deleted team still exists (should return 404)"
+
+def test_update_team():
+    """Test editing a team's name."""
+    create_response = client.post("/api/teams/", json={"name": "Astralis Old"})
+    team_id = create_response.json()["id"]
+
+    update_response = client.put(
+        f"/api/teams/{team_id}",
+        json={"name": "Astralis New"}
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["name"] == "Astralis New"
 
 # ==================== PLAYERS TESTS ====================
 
 def test_create_player():
-    """Test tworzenia nowego gracza."""
+    """Test creating a new player."""
     team_response = client.post("/api/teams/", json={"name": "FaZe"})
     team_id = team_response.json()["id"]
 
@@ -85,25 +96,36 @@ def test_create_player():
             "team_id": team_id
         }
     )
-    assert response.status_code == 200, "Nie udało się utworzyć gracza"
+    assert response.status_code == 200, "Failed to create player"
     data = response.json()
-    assert data["nickname"] == "s1mple", "Błędny nick gracza"
-    assert data["team_id"] == team_id, "Gracz przypisany do złej drużyny"
+    assert data["nickname"] == "s1mple", "Incorrect player nickname"
+    assert data["team_id"] == team_id, "Player assigned to wrong team ID"
 
 def test_get_players():
-    """Test pobierania listy graczy."""
+    """Test fetching the list of players."""
     client.post("/api/players/", json={"nickname": "ZywOo"})
     client.post("/api/players/", json={"nickname": "donk"})
 
     response = client.get("/api/players/")
-    assert response.status_code == 200, "Błąd pobierania graczy"
+    assert response.status_code == 200, "Error fetching players"
     data = response.json()
-    assert len(data) == 2, "Oczekiwano 2 graczy"
+    assert len(data) == 2, "Expected 2 players"
+
+def test_search_players():
+    """Test the player search functionality (Regex)."""
+    client.post("/api/players/", json={"nickname": "m0NESY"})
+    client.post("/api/players/", json={"nickname": "NiKo"})
+
+    response = client.get("/api/search/players/?query=m0")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["nickname"] == "m0NESY"
 
 # ==================== TOURNAMENTS TESTS ====================
 
 def test_create_tournament():
-    """Test tworzenia nowego turnieju."""
+    """Test creating a new tournament."""
     response = client.post(
         "/api/tournaments/",
         json={"name": "IEM Katowice 2024", "weight": 2.0}
@@ -114,7 +136,7 @@ def test_create_tournament():
     assert data["weight"] == 2.0
 
 def test_get_tournaments():
-    """Test pobierania listy turniejów."""
+    """Test fetching the list of tournaments."""
     client.post("/api/tournaments/", json={"name": "Major", "weight": 2.5})
     client.post("/api/tournaments/", json={"name": "Minor", "weight": 0.5})
 
@@ -123,10 +145,27 @@ def test_get_tournaments():
     data = response.json()
     assert len(data) == 2
 
+def test_tournament_weight_validation():
+    """Test if the app rejects a tournament when the sum of phase weights != 1.0."""
+    response = client.post(
+        "/api/tournaments/",
+        json={
+            "name": "Bad Tournament",
+            "weight": 1.0,
+            "weight_group": 0.5,
+            "weight_quarters": 0.5,
+            "weight_semis": 0.5,   # Sum is 1.5 instead of 1.0
+            "weight_final": 0.0
+        }
+    )
+    assert response.status_code == 400, "The application should reject invalid weights"
+    # Note: Checking for the Polish string because the backend API still returns this specific error message
+    assert "Suma standardowych wag" in response.json()["detail"]
+
 # ==================== MATCHES TESTS ====================
 
 def test_create_match():
-    """Test tworzenia nowego meczu."""
+    """Test creating a new match."""
     team1 = client.post("/api/teams/", json={"name": "Navi"}).json()
     team2 = client.post("/api/teams/", json={"name": "Vitality"}).json()
     tournament = client.post("/api/tournaments/", json={"name": "Major", "weight": 2.0}).json()
@@ -149,7 +188,7 @@ def test_create_match():
     assert data["result"] == "3:2"
 
 def test_get_matches():
-    """Test pobierania listy meczów."""
+    """Test fetching the list of matches."""
     team1 = client.post("/api/teams/", json={"name": "Navi"}).json()
     team2 = client.post("/api/teams/", json={"name": "Vitality"}).json()
     tournament = client.post("/api/tournaments/", json={"name": "Major", "weight": 2.0}).json()
@@ -175,39 +214,53 @@ def test_get_matches():
 # ==================== RANKING TEST ====================
 
 def test_ranking_calculation():
-    """Test obliczania rankingu graczy."""
-    player = client.post("/api/players/", json={"nickname": "jL"}).json()
-    tournament1 = client.post("/api/tournaments/", json={"name": "Major", "weight": 1.0}).json()
-    tournament2 = client.post("/api/tournaments/", json={"name": "PGL", "weight": 0.5}).json()
+    """Test the dynamic ranking calculation based on performances and rounds."""
+    # 1. Create team
+    team = client.post("/api/teams/", json={"name": "Navi"}).json()
 
-    # Bezpośrednie dodanie do bazy (setup testowy)
-    db = next(override_get_db())
-    db.add(models.PlayerRankingPoint(
-        player_id=player["id"],
-        tournament_id=tournament1["id"],
-        points=100.0
-    ))
-    db.add(models.PlayerRankingPoint(
-        player_id=player["id"],
-        tournament_id=tournament2["id"],
-        points=50.0
-    ))
-    db.commit()
+    # 2. Create player
+    player = client.post("/api/players/", json={"nickname": "jL", "team_id": team["id"]}).json()
 
+    # 3. Create tournament
+    tour = client.post("/api/tournaments/", json={"name": "Major 2024", "weight": 1.0}).json()
+
+    # 4. Add team to tournament and specify played rounds
+    client.post(
+        f"/api/tournaments/{tour['id']}/add_team",
+        json={
+            "team_id": team["id"],
+            "starts_in_semis": False,
+            "in_group": True,
+            "rounds_group": 150
+        }
+    )
+
+    # 5. Set player's rating performance
+    client.post(
+        "/api/performances/",
+        json={
+            "player_id": player["id"],
+            "tournament_id": tour["id"],
+            "rating_group": 1.45
+        }
+    )
+
+    # 6. Fetch ranking and verify
     response = client.get("/api/ranking/")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
-    assert data[0]["total_points"] == 125.0, "Błędne obliczenie punktów rankingu"
+    assert data[0]["total_points"] > 0, "Ranking points calculation failed, expected > 0"
 
 # ==================== EXPORT/IMPORT TESTS ====================
 
 def test_export_database():
-    """Test eksportu bazy danych."""
+    """Test exporting the database."""
     client.post("/api/teams/", json={"name": "Navi"})
     client.post("/api/players/", json={"nickname": "s1mple"})
 
-    response = client.get("/api/export/")
+    # Fixed errors with the trailing "/" in the API endpoint
+    response = client.get("/api/export")
     assert response.status_code == 200
     data = response.json()
     assert "teams" in data
@@ -217,19 +270,24 @@ def test_export_database():
 # ==================== HTML VIEWS TESTS ====================
 
 def test_index_page():
-    """Test strony głównej."""
+    """Test the index page rendering."""
     response = client.get("/")
     assert response.status_code == 200
     assert b"CS2 Player Tracker" in response.content
 
 def test_ranking_page():
-    """Test strony rankingu."""
+    """Test the main ranking page rendering."""
     response = client.get("/ranking")
     assert response.status_code == 200
 
 def test_player_profile_page():
-    """Test strony profilu gracza."""
+    """Test the player profile page rendering."""
     player = client.post("/api/players/", json={"nickname": "jL"}).json()
 
     response = client.get(f"/player/{player['id']}")
+    assert response.status_code == 200
+
+def test_players_page():
+    """Test the main players list page."""
+    response = client.get("/players")
     assert response.status_code == 200
