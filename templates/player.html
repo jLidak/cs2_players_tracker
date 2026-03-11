@@ -3,52 +3,50 @@
 {% block title %}{{ player.nickname }} - Profile{% endblock %}
 
 {% block content %}
-<div class="card" style="max-width: 800px; margin: 0 auto;">
+<div class="card profile-card">
 
-    <div style="display: flex; gap: 30px; align-items: flex-start;">
-        <div style="flex-shrink: 0;">
+    <div class="profile-header">
+        <div class="profile-photo-container">
             {% if player.photo_url %}
-            <img src="{{ player.photo_url }}" alt="{{ player.nickname }}"
-                 style="width: 200px; height: 200px; object-fit: cover; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            <img src="{{ player.photo_url }}" alt="{{ player.nickname }}" class="profile-photo">
             {% else %}
-            <div style="width: 200px; height: 200px; background: #eee; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 5rem; color: #ccc;">
-                👤
-            </div>
+            <div class="profile-photo-placeholder">👤</div>
             {% endif %}
         </div>
 
-        <div style="flex-grow: 1;">
-            <div style="display: flex; justify-content: space-between; align-items: start;">
-                <h1 style="margin-top: 0; font-size: 2.5rem; margin-bottom: 10px;">{{ player.nickname }}</h1>
+        <div class="profile-info">
+            <div class="profile-title-row">
+                <h1 class="profile-nickname">{{ player.nickname }}</h1>
 
-                <button onclick="openEditModal()" class="btn" style="background-color: #f39c12; font-size: 0.9rem; padding: 8px 15px;">
+                <button onclick="openEditModal()" class="btn btn-edit">
                     ✎ Edit Profile
                 </button>
             </div>
 
-            <h3 style="color: #666; margin-top: 0;">
+            <h3 class="profile-team">
                 {% if player.team %}
-                    Team: <span style="color: #333;">{{ player.team.name }}</span>
+                    Team: <span class="team-name">{{ player.team.name }}</span>
                 {% else %}
-                    <span style="color: #999;">No team</span>
+                    <span class="no-team">No team</span>
                 {% endif %}
             </h3>
 
-            <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+            <div class="stats-container">
                 <strong>Tournament Statistics:</strong>
-                <ul style="margin-top: 10px; padding-left: 20px;">
+                <ul class="stats-list">
                     {% for perf in player.tournament_performances %}
-                    <li style="margin-bottom: 5px;">
+                    <li>
                         <strong>{{ perf.tournament.name }}:</strong>
-                        <span style="color: #27ae60;">
+                        <span class="stats-highlight">
                             {% if perf.rating_group %}Grp: {{ perf.rating_group }}{% endif %}
                             {% if perf.rating_quarters %} | QF: {{ perf.rating_quarters }}{% endif %}
                             {% if perf.rating_semis %} | SF: {{ perf.rating_semis }}{% endif %}
                             {% if perf.rating_final %} | F: {{ perf.rating_final }}{% endif %}
+                            {% if perf.rating_third_place %} | 3rd: {{ perf.rating_third_place }}{% endif %}
                         </span>
                     </li>
                     {% else %}
-                    <li style="color: #888;">No tournament data.</li>
+                    <li class="no-data">No tournament data.</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -56,21 +54,21 @@
     </div>
 </div>
 
-<div id="editPlayerModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
-    <div style="background: white; padding: 25px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-        <h2 style="margin-top: 0;">Edit Player Profile</h2>
+<div id="editPlayerModal" class="modal-overlay" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+    <div class="modal-content">
+        <h2 style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">Edit Player Profile</h2>
 
-        <form onsubmit="submitEditPlayer(event)">
+        <form onsubmit="submitEditPlayer(event)" style="margin-top: 15px;">
             <input type="hidden" id="editPlayerId" value="{{ player.id }}">
 
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Nickname:</label>
-                <input type="text" name="nickname" id="editNickname" value="{{ player.nickname }}" required style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+            <div class="form-group">
+                <label>Nickname:</label>
+                <input type="text" name="nickname" id="editNickname" value="{{ player.nickname }}" required>
             </div>
 
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Team:</label>
-                <select name="team_id" id="editTeamId" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+            <div class="form-group">
+                <label>Team:</label>
+                <select name="team_id" id="editTeamId">
                     <option value="">-- No team --</option>
                     {% for team in all_teams %}
                     <option value="{{ team.id }}" {% if player.team_id == team.id %}selected{% endif %}>{{ team.name }}</option>
@@ -78,9 +76,9 @@
                 </select>
             </div>
 
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Photo URL:</label>
-                <input type="url" name="photo_url" id="editPhotoUrl" value="{{ player.photo_url or '' }}" placeholder="https://..." style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>Photo URL:</label>
+                <input type="url" name="photo_url" id="editPhotoUrl" value="{{ player.photo_url or '' }}" placeholder="https://...">
             </div>
 
             <div style="text-align: right;">
@@ -92,21 +90,162 @@
 </div>
 {% endblock %}
 
+{% block extra_style %}
+<style>
+    /* Profile Layout */
+    .profile-card {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .profile-header {
+        display: flex;
+        gap: 30px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .profile-photo-container {
+        flex-shrink: 0;
+    }
+
+    .profile-photo {
+        width: 200px;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        border: 4px solid #f8f9fa;
+    }
+
+    .profile-photo-placeholder {
+        width: 200px;
+        height: 200px;
+        background: #eee;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 5rem;
+        color: #ccc;
+    }
+
+    /* Profile Info */
+    .profile-info {
+        flex-grow: 1;
+        min-width: 300px;
+    }
+
+    .profile-title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 10px;
+    }
+
+    .profile-nickname {
+        margin-top: 0;
+        font-size: 2.5rem;
+    }
+
+    .btn-edit {
+        background-color: #f39c12;
+        font-size: 0.9rem;
+        padding: 8px 15px;
+    }
+
+    .profile-team {
+        color: #666;
+        margin-top: 0;
+    }
+
+    .team-name {
+        color: #333;
+    }
+
+    .no-team {
+        color: #999;
+    }
+
+    /* Statistics Container */
+    .stats-container {
+        margin-top: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #eee;
+    }
+
+    .stats-list {
+        margin-top: 10px;
+        padding-left: 20px;
+    }
+
+    .stats-list li {
+        margin-bottom: 5px;
+    }
+
+    .stats-highlight {
+        color: #27ae60;
+        font-weight: 500;
+    }
+
+    .no-data {
+        color: #888;
+        font-style: italic;
+    }
+
+    /* Modal Styles */
+    .modal-content {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        width: 400px;
+        max-width: 90%;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        outline: none;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        border-color: #3498db;
+    }
+</style>
+{% endblock %}
+
 {% block extra_script %}
 <script>
+    /**
+     * Opens the modal for editing the player's profile.
+     */
     function openEditModal() {
         document.getElementById('editPlayerModal').style.display = 'flex';
     }
 
+    /**
+     * Closes the edit profile modal.
+     */
     function closeEditModal() {
         document.getElementById('editPlayerModal').style.display = 'none';
     }
 
+    /**
+     * Handles the form submission to update the player's data via the API.
+     */
     async function submitEditPlayer(event) {
         event.preventDefault();
+
         const playerId = document.getElementById('editPlayerId').value;
         const formData = new FormData(event.target);
-
         const teamIdVal = formData.get("team_id");
 
         const data = {
@@ -134,12 +273,11 @@
         }
     }
 
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        const modal = document.getElementById('editPlayerModal');
-        if (event.target === modal) {
+    // Close modal when clicking outside of the modal content area
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal-overlay')) {
             closeEditModal();
         }
-    }
+    });
 </script>
 {% endblock %}

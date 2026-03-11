@@ -19,22 +19,22 @@
             <input type="text" id="searchInput" placeholder="Search for a player or team..." oninput="searchPlayers()" style="width: 100%; padding: 10px; font-size: 1rem; border: 1px solid #ddd; border-radius: 5px; outline: none;">
         </div>
 
-        <div class="player-grid" id="playerGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+        <div class="player-grid" id="playerGrid">
             {% for player in players %}
-            <div class="player-card" onclick="window.location.href='/player/{{ player.id }}'" style="background: white; border: 1px solid #eee; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <div class="player-card" onclick="window.location.href='/player/{{ player.id }}'">
 
                 {% if player.photo_url %}
-                <img src="{{ player.photo_url }}" alt="{{ player.nickname }}" class="player-photo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 3px solid #f1f1f1;">
+                <img src="{{ player.photo_url }}" alt="{{ player.nickname }}" class="player-photo">
                 {% else %}
-                <div style="width: 100px; height: 100px; border-radius: 50%; background: #eee; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #aaa;">👤</div>
+                <div class="player-photo-placeholder">👤</div>
                 {% endif %}
 
                 <h3 style="margin: 5px 0; color: #333;">{{ player.nickname }}</h3>
 
                 {% if player.team %}
-                <p style="color: #666; margin: 0; font-size: 0.9rem; font-weight: bold;">{{ player.team.name }}</p>
+                <p class="team-label">{{ player.team.name }}</p>
                 {% else %}
-                <p style="color: #999; margin: 0; font-size: 0.9rem;">No team</p>
+                <p class="no-team-label">No team</p>
                 {% endif %}
             </div>
             {% endfor %}
@@ -42,7 +42,7 @@
     </div>
 </div>
 
-<div id="addPlayerModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+<div id="addPlayerModal" class="modal-overlay" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
     <div style="background: white; padding: 25px; border-radius: 8px; width: 400px; max-width: 90%; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
         <h2 style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">Add New Player</h2>
 
@@ -56,7 +56,8 @@
                 <label style="display: block; margin-bottom: 5px; font-weight: bold;">Team:</label>
                 <select name="team_id" style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; outline: none;">
                     <option value="">-- Select team --</option>
-                    {% for team in teams %} <option value="{{ team.id }}">{{ team.name }}</option>
+                    {% for team in teams %}
+                    <option value="{{ team.id }}">{{ team.name }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -73,19 +74,46 @@
         </form>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_style %}
 <style>
-    .player-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+    .player-photo-placeholder {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: #eee;
+        margin: 0 auto 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        color: #aaa;
+    }
+
+    .team-label {
+        color: #666;
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: bold;
+    }
+
+    .no-team-label {
+        color: #999;
+        margin: 0;
+        font-size: 0.9rem;
     }
 </style>
 {% endblock %}
 
 {% block extra_script %}
 <script>
-    let allPlayers = {{ players | tojson }};
+    // Server-rendered players list passed to frontend for live search
+    const allPlayers = {{ players | tojson }};
 
+    /**
+     * Filters the player grid locally based on search input.
+     */
     function searchPlayers() {
         const query = document.getElementById('searchInput').value.toLowerCase();
 
@@ -97,34 +125,30 @@
         displayPlayers(filteredPlayers);
     }
 
-    function displayPlayers(players) {
+    /**
+     * Re-renders the player grid with the provided list of players.
+     */
+    function displayPlayers(playersToDisplay) {
         const grid = document.getElementById('playerGrid');
         grid.innerHTML = '';
 
-        if (players.length === 0) {
+        if (playersToDisplay.length === 0) {
             grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #7f8c8d; padding: 2rem;">No players found.</p>';
             return;
         }
 
-        players.forEach(player => {
+        playersToDisplay.forEach(player => {
             const card = document.createElement('div');
             card.className = 'player-card';
             card.onclick = () => window.location.href = `/player/${player.id}`;
-            card.style.cssText = "background: white; border: 1px solid #eee; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);";
 
-            let photoHtml = '';
-            if (player.photo_url) {
-                photoHtml = `<img src="${player.photo_url}" alt="${player.nickname}" class="player-photo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 3px solid #f1f1f1;">`;
-            } else {
-                photoHtml = '<div style="width: 100px; height: 100px; border-radius: 50%; background: #eee; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #aaa;">👤</div>';
-            }
+            let photoHtml = player.photo_url
+                ? `<img src="${player.photo_url}" alt="${player.nickname}" class="player-photo">`
+                : `<div class="player-photo-placeholder">👤</div>`;
 
-            let teamHtml = '';
-            if (player.team) {
-                teamHtml = `<p style="color: #666; margin: 0; font-size: 0.9rem; font-weight: bold;">${player.team.name}</p>`;
-            } else {
-                teamHtml = '<p style="color: #999; margin: 0; font-size: 0.9rem;">No team</p>';
-            }
+            let teamHtml = player.team
+                ? `<p class="team-label">${player.team.name}</p>`
+                : `<p class="no-team-label">No team</p>`;
 
             card.innerHTML = `
                 ${photoHtml}
@@ -132,13 +156,13 @@
                 ${teamHtml}
             `;
 
-            card.onmouseenter = function() { this.style.transform = "translateY(-5px)"; this.style.boxShadow = "0 5px 15px rgba(0,0,0,0.1)"; }
-            card.onmouseleave = function() { this.style.transform = "translateY(0)"; this.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)"; }
-
             grid.appendChild(card);
         });
     }
 
+    /**
+     * Calls the API to completely wipe the database.
+     */
     function clearDatabase() {
         if (!confirm("WARNING! Are you sure you want to delete ALL data from the database?")) return;
         if (!confirm("This action cannot be undone. Confirm again to proceed.")) return;
@@ -157,6 +181,7 @@
         .catch(err => alert("Connection error: " + err));
     }
 
+    // Modal Control Functions
     function openAddPlayerModal() {
         document.getElementById('addPlayerModal').style.display = 'flex';
     }
@@ -165,6 +190,16 @@
         document.getElementById('addPlayerModal').style.display = 'none';
     }
 
+    // Close modal if clicked outside of the inner box
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal-overlay')) {
+            closeAddPlayerModal();
+        }
+    });
+
+    /**
+     * Submits the new player data to the backend.
+     */
     async function submitAddPlayer(event) {
         event.preventDefault();
         const formData = new FormData(event.target);
@@ -192,13 +227,6 @@
         } catch (e) {
             console.error(e);
             alert("Server connection error.");
-        }
-    }
-
-    window.onclick = function(event) {
-        const modal = document.getElementById('addPlayerModal');
-        if (event.target === modal) {
-            closeAddPlayerModal();
         }
     }
 </script>

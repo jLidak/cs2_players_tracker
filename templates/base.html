@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}CS2 Player Tracker{% endblock %}</title>
     <link rel="icon" type="image/png" href="/static/favicon.png">
+
     <style>
+        /* =========================================
+           1. CSS RESET & GLOBAL VARIABLES
+           ========================================= */
         * {
             margin: 0;
             padding: 0;
@@ -16,13 +20,16 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding-bottom: 60px;
+            padding-bottom: 60px; /* Space for the fixed footer */
         }
 
+        /* =========================================
+           2. LAYOUT (Nav, Container, Footer)
+           ========================================= */
         nav {
             background: rgba(0, 0, 0, 0.8);
             padding: 1rem 2rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
 
         nav ul {
@@ -49,11 +56,28 @@
             padding: 0 1rem;
         }
 
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        /* =========================================
+           3. UI COMPONENTS (Cards, Buttons, Tables)
+           ========================================= */
         .card {
             background: white;
             border-radius: 10px;
             padding: 2rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             margin-bottom: 2rem;
         }
 
@@ -62,6 +86,7 @@
             margin-bottom: 1rem;
         }
 
+        /* Buttons */
         .btn {
             background: #667eea;
             color: white;
@@ -87,6 +112,32 @@
             background: #c0392b;
         }
 
+        /* Forms */
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.7rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        /* Tables */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -108,40 +159,11 @@
             background: #f8f9fa;
         }
 
-        input[type="text"], input[type="number"], input[type="date"], select, textarea {
-            width: 100%;
-            padding: 0.7rem;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1rem;
-            margin-bottom: 1rem;
-        }
+        /* =========================================
+           4. SPECIFIC MODULES (Status, Player Grid)
+           ========================================= */
 
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #333;
-        }
-
-        footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 1000;
-        }
-
+        /* WebSocket Status Indicator */
         .status {
             display: flex;
             align-items: center;
@@ -166,6 +188,7 @@
             50% { opacity: 0.5; }
         }
 
+        /* Player Grid System */
         .player-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -178,14 +201,14 @@
             border-radius: 8px;
             padding: 1.5rem;
             text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s, box-shadow 0.3s;
             cursor: pointer;
         }
 
         .player-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         .player-photo {
@@ -205,6 +228,7 @@
             margin-bottom: 0;
         }
     </style>
+
     {% block extra_style %}{% endblock %}
 </head>
 <body>
@@ -212,7 +236,8 @@
         <ul>
             <li><a href="/">Home</a></li>
             <li><a href="/ranking">Ranking</a></li>
-            <li><a href="/players">Players</a></li> <li><a href="/teams">Teams</a></li>
+            <li><a href="/players">Players</a></li>
+            <li><a href="/teams">Teams</a></li>
             <li><a href="/tournaments">Tournaments</a></li>
             <li><a href="/import-json">JSON Import</a></li>
             <li><a href="/custom-ranking">🧪 Custom Ranking</a></li>
@@ -234,13 +259,19 @@
     </footer>
 
     <script>
+        /**
+         * Real-time WebSocket connection for server status and clock updates.
+         */
         const ws = new WebSocket(`ws://${window.location.host}/ws`);
         const statusDot = document.getElementById('status-dot');
         const serverStatus = document.getElementById('server-status');
+        const serverTime = document.getElementById('server-time');
 
         ws.onopen = () => {
             console.log('WebSocket connected');
             statusDot.classList.remove('offline');
+
+            // Ping the server every second to trigger a time/status update
             setInterval(() => {
                 if (ws.readyState === WebSocket.OPEN) {
                     ws.send('ping');
@@ -249,10 +280,14 @@
         };
 
         ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            serverStatus.textContent = data.status;
-            document.getElementById('server-time').textContent = data.timestamp;
-            statusDot.classList.remove('offline');
+            try {
+                const data = JSON.parse(event.data);
+                serverStatus.textContent = data.status;
+                serverTime.textContent = data.timestamp;
+                statusDot.classList.remove('offline');
+            } catch (error) {
+                console.error("Error parsing WebSocket message:", error);
+            }
         };
 
         ws.onerror = () => {
@@ -265,6 +300,7 @@
             statusDot.classList.add('offline');
         };
     </script>
+
     {% block extra_script %}{% endblock %}
 </body>
 </html>

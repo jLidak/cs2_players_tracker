@@ -13,7 +13,7 @@
     <div class="card" style="margin-bottom: 20px; border-left: 5px solid #3498db;">
         <h2>📤 Export (Backup)</h2>
         <p>Download the entire database content (teams, players, tournaments, matches, results) into a single JSON file.</p>
-        <a href="/api/export" class="btn" style="background-color: #3498db; text-decoration: none; display: block; text-align: center; width: 100%; box-sizing: border-box;  margin-top: 10px;">
+        <a href="/api/export" class="btn" style="background-color: #3498db; text-decoration: none; display: block; text-align: center; width: 100%; box-sizing: border-box; margin-top: 10px;">
             Download full backup (.json)
         </a>
     </div>
@@ -24,13 +24,13 @@
 
         <form onsubmit="importDatabase(event)" style="margin-top: 15px;">
             <input type="file" id="importFile" accept=".json" required style="padding: 10px; border: 1px solid #ddd; width: 100%; box-sizing: border-box; margin-bottom: 10px;">
-            <button type="submit" class="btn" style="background-color: #e74c3c; width: 100%;  padding-top: 10px; margin-top: 10px;">
+            <button type="submit" class="btn" style="background-color: #e74c3c; width: 100%; padding-top: 10px; margin-top: 10px;">
                 Upload file and overwrite database
             </button>
         </form>
     </div>
 
-    <div class="card" style="border-left: 5px solid #2ecc71;">
+    <div class="card" style="border-left: 5px solid #2ecc71; margin-bottom: 20px;">
         <h2>🔄 Initial Data</h2>
         <p>Load default data from server files (<code>json_import_files</code> folder). Safe - does not delete existing data, only adds new data.</p>
         <button onclick="autoImportFromFiles()" class="btn" style="background-color: #2ecc71; width: 100%; padding-top: 10px; margin-top: 10px;">
@@ -40,17 +40,16 @@
 
     <div class="card">
         <h2>📥 Import Teams and Players</h2>
-
         <p style="font-size: 0.9rem; color: #666;">
             Upload a <code>.json</code> file containing a list of teams and players. Structure:
-            <pre style="background: #eee; padding: 5px; font-size: 0.75rem;">
+            <pre style="background: #eee; padding: 10px; font-size: 0.85rem; border-radius: 5px; overflow-x: auto; margin-top: 10px;">
 {
   "teams": [
     {
       "name": "Team Name",
-      "logo_url": "...",
+      "logo_url": "https://...",
       "players": [
-        {"nickname": "Nickname", "photo_url": "..."}
+        {"nickname": "Player1", "photo_url": "https://..."}
       ]
     }
   ]
@@ -58,11 +57,9 @@
             </pre>
         </p>
 
-        <input type="file" id="jsonFileInput" accept=".json" style="margin-bottom: 10px;">
-        <br>
+        <input type="file" id="jsonFileInput" accept=".json" style="margin-bottom: 10px; width: 100%; padding: 10px; border: 1px solid #ddd;">
         <button onclick="uploadJson()" class="btn" style="background: #3498db; width: 100%; padding-top: 10px; margin-top: 10px;">Upload File</button>
-        <div id="importStatus" style="margin-top: 10px; font-weight: bold;"></div>
-
+        <div id="importStatus" style="margin-top: 10px; font-weight: bold; text-align: center;"></div>
     </div>
 
 </div>
@@ -70,6 +67,9 @@
 
 {% block extra_script %}
 <script>
+    /**
+     * Handles full database restoration from a JSON backup file.
+     */
     async function importDatabase(event) {
         event.preventDefault();
 
@@ -108,12 +108,16 @@
         }
     }
 
+    /**
+     * Triggers the backend process to load initial seed data from the server.
+     */
     async function autoImportFromFiles() {
         if (!confirm("Do you want to load initial data?")) return;
 
         try {
             const response = await fetch('/api/import/auto-from-files', { method: 'POST' });
             const data = await response.json();
+
             if (response.ok) {
                 alert(data.message);
                 window.location.reload();
@@ -125,6 +129,9 @@
         }
     }
 
+    /**
+     * Handles parsing and uploading a specific JSON file containing only teams and players.
+     */
     async function uploadJson() {
         const fileInput = document.getElementById('jsonFileInput');
         const statusDiv = document.getElementById('importStatus');
@@ -139,11 +146,9 @@
         statusDiv.style.color = "blue";
 
         try {
-            // Read file as text
             const text = await file.text();
-
-            // Parse to JSON object
             let jsonData;
+
             try {
                 jsonData = JSON.parse(text);
             } catch (e) {
@@ -152,12 +157,9 @@
                 return;
             }
 
-            // Send to backend
             const response = await fetch('/api/import_data/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(jsonData)
             });
 
@@ -166,7 +168,6 @@
             if (response.ok) {
                 statusDiv.innerText = result.message;
                 statusDiv.style.color = "green";
-                // Optionally refresh page after 2 seconds
                 setTimeout(() => window.location.href = "/teams", 2000);
             } else {
                 statusDiv.innerText = "Server error: " + (result.detail || "Unknown error");
@@ -179,6 +180,5 @@
             statusDiv.style.color = "red";
         }
     }
-
 </script>
 {% endblock %}
