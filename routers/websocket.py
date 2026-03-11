@@ -1,17 +1,24 @@
 """
-Moduł obsługujący WebSocket.
-Zapewnia komunikację w czasie rzeczywistym (status serwera, zegar).
+WebSocket routing module.
+Provides real-time communication (server status, live clock) to connected clients.
 """
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
 from datetime import datetime
 
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
 router = APIRouter()
+
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
     """
-    Obsługuje połączenie WebSocket.
-    Wysyła aktualny czas i status serwera w pętli.
+    Handles an active WebSocket connection.
+    Continuously sends the current server time and 'Online' status
+    in response to incoming messages (pings) from the client.
+
+    Args:
+        websocket (WebSocket): The active WebSocket connection object.
     """
     await websocket.accept()
     try:
@@ -21,6 +28,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 "status": "Online",
                 "timestamp": now
             })
+            # Wait for the next ping from the client before sending the next update
             await websocket.receive_text()
     except WebSocketDisconnect:
         pass

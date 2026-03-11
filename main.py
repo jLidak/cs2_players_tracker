@@ -1,31 +1,38 @@
 """
-Główna aplikacja FastAPI dla CS2 Player Tracker.
-Struktura z użyciem routerów.
+Main FastAPI application entry point for the CS2 Player Tracker.
+Configures routing, static files, and database table initialization.
 """
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+
 import models
 from database import engine
-
 from routers import (
-    teams,
-    players,
-    tournaments,
-    matches,
-    ranking,
     data_ops,
+    matches,
+    players,
+    ranking,
+    teams,
+    tournaments,
+    views,
     websocket,
-    views
 )
 
+# Initialize database tables automatically based on SQLAlchemy models
 models.Base.metadata.create_all(bind=engine)
 
-# Inicjalizacja aplikacji
-app = FastAPI(title="CS2 Player Tracker", version="1.0.0")
+# Initialize the FastAPI application
+app = FastAPI(
+    title="CS2 Player Tracker",
+    version="1.0.0",
+    description="Advanced ranking and tournament management API for Counter-Strike 2."
+)
 
-# Montowanie plików static
+# Mount static files directory (for CSS, images, etc.)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Include all API routers
 app.include_router(teams.router)
 app.include_router(players.router)
 app.include_router(tournaments.router)

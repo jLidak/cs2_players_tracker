@@ -1,23 +1,44 @@
-from typing import List, Optional
+"""
+API router for Ranking calculations.
+Contains the core mathematical algorithms for calculating both the default
+global ranking and the highly customizable dynamic ranking system.
+"""
+
 import math
-from fastapi import APIRouter, Depends
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
+
 import models
 import schemas
 from database import get_db
-from fastapi import HTTPException
 
 router = APIRouter(tags=["Ranking"])
 
-# --- STAŁE DO OBLICZEŃ (Konfiguracja) ---
-RANKING_BASE_MULTIPLIER = 50.0  # Podstawowy mnożnik punktów
-RANKING_ROUNDS_ROOT = 2.66  # Stopień pierwiastka dla rund
-RANKING_RATING_EXPONENT_DIV = 1.0  # Dzielnik wykładnika ratingu
-RANKING_BONUS = 0.15  # Bonus za fazy pucharowe (QF, SF, Final, 3rd)
+# ==========================================
+# DEFAULT RANKING CONSTANTS
+# ==========================================
+RANKING_BASE_MULTIPLIER = 50.0  # Base pool of points awarded per phase
+RANKING_ROUNDS_ROOT = 2.66  # Root exponent applied to the number of rounds played
+RANKING_RATING_EXPONENT_DIV = 1.0  # Divisor for the rating differential exponent (damping)
+RANKING_BONUS = 0.15  # Fixed bonus added to ratings in advanced knockout phases
 
 
 @router.get("/api/ranking/", response_model=List[schemas.RankingEntry])
-def get_ranking(db: Session = Depends(get_db), tournament_id: Optional[int] = None):
+def get_ranking(db: Session = Depends(get_db), tournament_id: Optional[int] = None) -> List[schemas.RankingEntry]:
+    """
+    Calculates and retrieves the default player ranking.
+    The points are generated dynamically based on player ratings, phase weights,
+    number of rounds played, and global math constants.
+
+    Args:
+        db (Session): The database session.
+        tournament_id (Optional[int]): If provided, limits the ranking to a specific tournament.
+
+    Returns:
+        List[schemas.RankingEntry]: A sorted list of players with their calculated points and details.
+    """
     players = db.query(models.Player).options(
         joinedload(models.Player.team),
         joinedload(models.Player.tournament_performances).joinedload(models.PlayerTournamentPerformance.tournament),
@@ -54,12 +75,18 @@ def get_ranking(db: Session = Depends(get_db), tournament_id: Optional[int] = No
             current_tour_phases = []
             tournament_points_sum = 0.0
 
-            def process_phase(phase_name, rating, weight, phase_rounds, bonus=0.0):
-                # Jeśli gracz nie grał w tej fazie (brak ratingu lub 0 rund), po prostu to ignorujemy
+            def process_phase(phase_name: str, rating: Optional[float], weight: float, phase_rounds: int,
+                              bonus: float = 0.0) -> float:
+                """Inner helper to calculate points for a specific tournament phase."""
                 if rating is None or rating == 0 or phase_rounds == 0:
                     return 0.0
 
                 effective_rating = rating + bonus
+
+                # Math logic:
+                # 1. Find the differential from the baseline rating (1.0).
+                # 2. Dampen extreme differences using root/exponent logic.
+                # 3. Apply the rounds root to reward longevity non-linearly.
                 diff = (effective_rating - 1.0) * 100
                 exponent = 1 / RANKING_RATING_EXPONENT_DIV
                 damped_diff = math.copysign(abs(diff) ** exponent, diff)
@@ -77,7 +104,7 @@ def get_ranking(db: Session = Depends(get_db), tournament_id: Optional[int] = No
 
                 return points
 
-            # --- OBLICZENIA FAZ ---
+            # --- CALCULATE PHASES ---
             if tour.bracket_type == "Bracket 6 teams" and starts_in_semis:
                 w_group = tour.weight_group_override if tour.weight_group_override is not None else tour.weight_group
                 tournament_points_sum += process_phase("Group (Override)", perf.rating_group, w_group, r_group)
@@ -109,7 +136,7 @@ def get_ranking(db: Session = Depends(get_db), tournament_id: Optional[int] = No
             final_tour_points = max(0.0, tournament_points_sum) * tour.weight
             total_points += final_tour_points
 
-            # Dodajemy turniej do szczegółów TYLKO jeśli gracz uczestniczył w jakiejś fazie
+            # Add tournament only if the player participated in at least one phase
             if current_tour_phases:
                 player_details.append({
                     "tournament_name": tour.name,
@@ -142,7 +169,19 @@ def get_ranking(db: Session = Depends(get_db), tournament_id: Optional[int] = No
 
 
 @router.post("/api/custom-ranking/", response_model=List[schemas.RankingEntry])
-def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = Depends(get_db)):
+def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = Depends(get_db)) -> List[
+    schemas.RankingEntry]:
+    """
+    Calculates a custom ranking simulation based on parameters provided by the user.
+    Allows overriding multipliers, root exponents, phase weights, and tournament weights.
+
+    Args:
+        params (schemas.CustomRankingParams): The JSON payload with custom configuration.
+        db (Session): The database session.
+
+    Returns:
+        List[schemas.RankingEntry]: The sorted ranking resulting from the custom simulation.
+    """
     players = db.query(models.Player).options(
         joinedload(models.Player.team),
         joinedload(models.Player.tournament_performances).joinedload(models.PlayerTournamentPerformance.tournament),
@@ -165,7 +204,9 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
                 else:
                     has_participated_in_target = True
 
+            # Apply user overrides if provided for this specific tournament
             user_weights = params.tournament_overrides.get(tid)
+
             w_group = tour.weight_group
             w_qf = tour.weight_quarters
             w_sf = tour.weight_semis
@@ -208,16 +249,19 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
 
             current_tour_phases = []
 
-            def process_custom_phase(phase_name, rating, weight, phase_rounds, bonus):
-                # Zabezpieczenie przed wpisywaniem pustych faz
+            def process_custom_phase(phase_name: str, rating: Optional[float], weight: float, phase_rounds: int,
+                                     bonus: float) -> float:
+                """Inner helper to calculate custom phase points based on injected params."""
                 if rating is None or rating == 0 or phase_rounds == 0:
                     return 0.0
 
                 effective_rating = rating + bonus
                 diff = (effective_rating - 1.0) * 100
+
                 exp_div = params.rating_exponent_divisor if params.rating_exponent_divisor != 0 else 1.0
                 exponent = 1 / exp_div
                 damped_diff = math.copysign(abs(diff) ** exponent, diff)
+
                 root_val = params.rounds_root if params.rounds_root != 0 else 1.0
                 rounds_factor = phase_rounds ** (1 / root_val)
 
@@ -242,17 +286,18 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
                 points_sum += process_custom_phase("Final", perf.rating_final, w_final_ov, r_final, params.bonus_final)
             else:
                 points_sum += process_custom_phase("Group Stage", perf.rating_group, w_group, r_group, 0.0)
-                points_sum += process_custom_phase("Quarter-Final", perf.rating_quarters, w_qf, r_quarters, params.bonus_qf)
+                points_sum += process_custom_phase("Quarter-Final", perf.rating_quarters, w_qf, r_quarters,
+                                                   params.bonus_qf)
                 points_sum += process_custom_phase("Semi-Final", perf.rating_semis, w_sf, r_semis, params.bonus_sf)
                 points_sum += process_custom_phase("Final", perf.rating_final, w_final, r_final, params.bonus_final)
 
             if tour.has_third_place:
-                points_sum += process_custom_phase("3rd Place", perf.rating_third_place, w_3rd, r_third, params.bonus_third_place)
+                points_sum += process_custom_phase("3rd Place", perf.rating_third_place, w_3rd, r_third,
+                                                   params.bonus_third_place)
 
             final_tour_points = max(0.0, points_sum) * t_weight
             total_points += final_tour_points
 
-            # Dodajemy turniej do szczegółów TYLKO jeśli gracz uczestniczył w jakiejś fazie
             if current_tour_phases:
                 player_details.append({
                     "tournament_name": tour.name,
@@ -282,14 +327,27 @@ def calculate_custom_ranking(params: schemas.CustomRankingParams, db: Session = 
     return ranking
 
 
+# ==========================================
+# CUSTOM RANKING PRESETS CRUD
+# ==========================================
+
 @router.get("/api/ranking-presets/", response_model=List[schemas.CustomRankingPreset])
-def get_ranking_presets(db: Session = Depends(get_db)):
+def get_ranking_presets(db: Session = Depends(get_db)) -> List[models.CustomRankingPreset]:
+    """
+    Retrieves a list of all saved custom ranking configurations (presets).
+    """
     return db.query(models.CustomRankingPreset).all()
 
 
 @router.post("/api/ranking-presets/", response_model=schemas.CustomRankingPreset)
-def create_ranking_preset(preset: schemas.CustomRankingPresetCreate, db: Session = Depends(get_db)):
+def create_ranking_preset(preset: schemas.CustomRankingPresetCreate,
+                          db: Session = Depends(get_db)) -> models.CustomRankingPreset:
+    """
+    Saves a new custom ranking configuration to the database.
+    If a preset with the same name exists, it overwrites its settings.
+    """
     existing = db.query(models.CustomRankingPreset).filter(models.CustomRankingPreset.name == preset.name).first()
+
     if existing:
         existing.settings = preset.settings
         db.commit()
@@ -305,10 +363,14 @@ def create_ranking_preset(preset: schemas.CustomRankingPresetCreate, db: Session
 
 @router.delete("/api/ranking-presets/{preset_id}")
 def delete_ranking_preset(preset_id: int, db: Session = Depends(get_db)):
+    """
+    Deletes a saved custom ranking preset by its ID.
+    """
     db_preset = db.query(models.CustomRankingPreset).filter(models.CustomRankingPreset.id == preset_id).first()
+
     if not db_preset:
         raise HTTPException(status_code=404, detail="Preset not found")
 
     db.delete(db_preset)
     db.commit()
-    return {"message": "Preset usunięty"}
+    return {"message": "Preset deleted successfully"}

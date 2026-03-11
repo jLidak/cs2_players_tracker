@@ -1,10 +1,13 @@
 """
-Moduł obsługujący endpointy API dla Drużyn (Teams).
-Zawiera operacje CRUD: tworzenie, pobieranie, aktualizacja i usuwanie drużyn.
+API router for Teams.
+Contains CRUD operations: creating, retrieving, updating, and deleting teams.
 """
-from typing import List, Dict
+
+from typing import Dict, List
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 import models
 import schemas
 from database import get_db
@@ -18,17 +21,17 @@ router = APIRouter(
 @router.post("/", response_model=schemas.Team)
 def create_team(team: schemas.TeamCreate, db: Session = Depends(get_db)) -> models.Team:
     """
-    Tworzy nową drużynę w bazie danych.
+    Creates a new team in the database.
 
     Args:
-        team (schemas.TeamCreate): Dane nowej drużyny (nazwa, logo).
-        db (Session): Sesja bazy danych.
+        team (schemas.TeamCreate): The team data payload (name, logo_url).
+        db (Session): The database session.
 
     Returns:
-        models.Team: Obiekt utworzonej drużyny.
+        models.Team: The newly created team object.
 
     Raises:
-        HTTPException(400): Jeśli drużyna o podanej nazwie już istnieje.
+        HTTPException: If a team with the specified name already exists (400).
     """
     existing = db.query(models.Team).filter(models.Team.name == team.name).first()
     if existing:
@@ -44,13 +47,13 @@ def create_team(team: schemas.TeamCreate, db: Session = Depends(get_db)) -> mode
 @router.get("/", response_model=List[schemas.Team])
 def get_teams(db: Session = Depends(get_db)) -> List[models.Team]:
     """
-    Pobiera listę wszystkich drużyn.
+    Retrieves a list of all teams.
 
     Args:
-        db (Session): Sesja bazy danych.
+        db (Session): The database session.
 
     Returns:
-        List[models.Team]: Lista obiektów drużyn.
+        List[models.Team]: A list of all team objects.
     """
     return db.query(models.Team).all()
 
@@ -58,17 +61,17 @@ def get_teams(db: Session = Depends(get_db)) -> List[models.Team]:
 @router.get("/{team_id}", response_model=schemas.Team)
 def get_team(team_id: int, db: Session = Depends(get_db)) -> models.Team:
     """
-    Pobiera szczegóły pojedynczej drużyny na podstawie ID.
+    Retrieves details of a specific team by its ID.
 
     Args:
-        team_id (int): ID szukanej drużyny.
-        db (Session): Sesja bazy danych.
+        team_id (int): The ID of the team to retrieve.
+        db (Session): The database session.
 
     Returns:
-        models.Team: Znaleziona drużyna.
+        models.Team: The requested team object.
 
     Raises:
-        HTTPException(404): Jeśli drużyna nie zostanie znaleziona.
+        HTTPException: If the team is not found (404).
     """
     team = db.query(models.Team).filter(models.Team.id == team_id).first()
     if not team:
@@ -79,18 +82,18 @@ def get_team(team_id: int, db: Session = Depends(get_db)) -> models.Team:
 @router.put("/{team_id}", response_model=schemas.Team)
 def update_team(team_id: int, team: schemas.TeamUpdate, db: Session = Depends(get_db)) -> models.Team:
     """
-    Aktualizuje dane istniejącej drużyny.
+    Updates an existing team's details.
 
     Args:
-        team_id (int): ID drużyny do edycji.
-        team (schemas.TeamUpdate): Nowe dane.
-        db (Session): Sesja bazy danych.
+        team_id (int): The ID of the team to update.
+        team (schemas.TeamUpdate): The updated team data payload.
+        db (Session): The database session.
 
     Returns:
-        models.Team: Zaktualizowany obiekt drużyny.
+        models.Team: The updated team object.
 
     Raises:
-        HTTPException(404): Jeśli drużyna nie istnieje.
+        HTTPException: If the team is not found (404).
     """
     db_team = db.query(models.Team).filter(models.Team.id == team_id).first()
     if not db_team:
@@ -108,17 +111,17 @@ def update_team(team_id: int, team: schemas.TeamUpdate, db: Session = Depends(ge
 @router.delete("/{team_id}")
 def delete_team(team_id: int, db: Session = Depends(get_db)) -> Dict[str, str]:
     """
-    Usuwa drużynę z bazy danych.
+    Deletes a team from the database.
 
     Args:
-        team_id (int): ID drużyny do usunięcia.
-        db (Session): Sesja bazy danych.
+        team_id (int): The ID of the team to delete.
+        db (Session): The database session.
 
     Returns:
-        Dict[str, str]: Komunikat potwierdzający usunięcie.
+        Dict[str, str]: A success message confirming deletion.
 
     Raises:
-        HTTPException(404): Jeśli drużyna nie istnieje.
+        HTTPException: If the team is not found (404).
     """
     db_team = db.query(models.Team).filter(models.Team.id == team_id).first()
     if not db_team:
