@@ -73,7 +73,7 @@
                             <input type="checkbox" disabled> QF
                         </label>
                         <input type="hidden" name="in_quarters" value="false">
-                        <input type="number" value="0" disabled class="rounds-input">
+                        <input type="number" value="0" disabled class="rounds-input" style="background: #eee;">
                     </div>
                     {% else %}
                     <div class="phase-control">
@@ -256,6 +256,18 @@
 
 {% block extra_style %}
 <style>
+    /* ==========================================
+       CSS RESET FOR NUMBER INPUTS (REMOVES ARROWS)
+       ========================================== */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none !important;
+        margin: 0 !important;
+    }
+    input[type=number] {
+        -moz-appearance: textfield !important; /* Firefox */
+    }
+
     /* Tournament Header Info */
     .header-top { display: flex; justify-content: space-between; align-items: center; }
     .tournament-title { margin-bottom: 0; }
@@ -296,9 +308,23 @@
     .phase-disabled { opacity: 0.5; }
     .phase-label { font-size: 0.65rem; display:flex; align-items:center; justify-content:center; gap:3px; color: #555; cursor:pointer; }
     .third-label { color: #d35400; }
-    .rounds-input { width: 45px; padding: 3px; text-align: center; font-size: 0.9rem; border: 1px solid #ccc; border-radius: 3px; }
-    .rounds-input:disabled { background: #eee; }
-    .input-third { border-color: #d35400 !important; }
+
+    /* NEW: PANCERNY KOD DLA INPUTÓW (ROUNDS & RATINGS) */
+    .rounds-input, .rating-input {
+        width: 55px !important;
+        padding: 4px !important;
+        text-align: center !important;
+        font-size: 0.85rem !important;
+        border: 1px solid #ccc !important;
+        border-radius: 3px !important;
+        margin: 0 !important;
+    }
+    .rounds-input:disabled, .rating-input:disabled {
+        background-color: #eee !important;
+    }
+    .input-third {
+        border-color: #d35400 !important;
+    }
 
     /* Ratings Column */
     .ratings-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
@@ -340,7 +366,6 @@
 
     /* Compact Table Overrides */
     .compact-table th, .compact-table td { padding: 3px 6px !important; vertical-align: middle !important; }
-    .rating-input { width: 55px; padding: 2px 4px !important; height: 24px !important; font-size: 0.85rem !important; margin: 0 !important; border: 1px solid #ccc; border-radius: 3px;}
 
     /* Tabs */
     .tab-btn { background: #ecf0f1; color: #555; border: 1px solid #ccc; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
@@ -362,26 +387,17 @@
     // MODAL & TEAM SELECTION
     // ==========================================
 
-    /**
-     * Opens the modal to add new teams to the tournament.
-     */
     function openAddTeamsModal() {
         document.getElementById('addTeamsModal').style.display = 'flex';
         document.getElementById('addTeamSearchInput').value = '';
         filterAddTeams();
     }
 
-    /**
-     * Closes the "Add Teams" modal and resets checkboxes.
-     */
     function closeAddTeamsModal() {
         document.getElementById('addTeamsModal').style.display = 'none';
         document.querySelectorAll('.modal-team-checkbox').forEach(cb => cb.checked = false);
     }
 
-    /**
-     * Filters the list of available teams inside the modal based on search input.
-     */
     function filterAddTeams() {
         const filter = document.getElementById('addTeamSearchInput').value.toLowerCase();
         const items = document.querySelectorAll('.add-team-item');
@@ -392,9 +408,6 @@
         });
     }
 
-    /**
-     * Submits the selected teams from the modal to join the tournament.
-     */
     async function submitAddTeams() {
         const checkboxes = document.querySelectorAll('.modal-team-checkbox:checked');
         if (checkboxes.length === 0) {
@@ -446,9 +459,6 @@
     // FILTERING LOGIC
     // ==========================================
 
-    /**
-     * Applies both text search and phase tab filters to the ratings table.
-     */
     function applyFilters() {
         const searchInput = document.getElementById('playerTeamSearchInput').value.toLowerCase();
         const rows = document.querySelectorAll('.player-rating-row');
@@ -457,12 +467,10 @@
         rows.forEach(row => {
             let showRow = true;
 
-            // Phase Filter
             if (currentPhaseFilter !== 'all') {
                 showRow = row.getAttribute('data-in-' + currentPhaseFilter) === 'true';
             }
 
-            // Text Search Filter
             if (showRow && searchInput.trim() !== '') {
                 const playerName = row.querySelector('.player-name-cell').textContent.toLowerCase();
                 const teamName = row.querySelector('.team-name-cell').textContent.toLowerCase();
@@ -482,9 +490,6 @@
         }
     }
 
-    /**
-     * Switches the active UI tab to show/hide specific phase columns.
-     */
     function filterPhase(phase) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab'));
         document.getElementById('btn-filter-' + phase).classList.add('active-tab');
@@ -501,11 +506,7 @@
         applyFilters();
     }
 
-    /**
-     * Toggles the enabled/disabled state of round and rating inputs based on the phase checkbox.
-     */
     function togglePhaseInputs(teamId, phaseBase, isChecked, skipFilter = false) {
-        // Toggle Team Round Inputs
         const teamForm = document.querySelector(`.team-stats-form[data-team-id="${teamId}"]`);
         if (teamForm) {
             const roundInput = teamForm.querySelector(`input[name="rounds_${phaseBase}"]`);
@@ -520,7 +521,6 @@
             }
         }
 
-        // Toggle Player Rating Inputs
         const playerRows = document.querySelectorAll(`.player-rating-row[data-team-id="${teamId}"]`);
         playerRows.forEach(row => {
             const ratingInput = row.querySelector(`input[data-field="rating_${phaseBase}"]`);
@@ -541,7 +541,6 @@
         if (!skipFilter) applyFilters();
     }
 
-    // Initialize phase inputs on page load based on existing data
     window.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.phase-checkbox').forEach(cb => {
             const teamId = cb.getAttribute('data-team-id');
@@ -572,9 +571,6 @@
     // DATA SAVING & REMOVAL
     // ==========================================
 
-    /**
-     * Removes a team and cascades to remove player results for this tournament.
-     */
     async function removeTeam(teamId) {
         if (!confirm("Are you sure you want to remove this team? This will also remove the entered results of its players!")) return;
         try {
@@ -584,9 +580,6 @@
         } catch (e) { alert("Network error"); }
     }
 
-    /**
-     * Saves ratings for a single individual player.
-     */
     async function saveRating(playerId) {
         const row = document.getElementById(`row-${playerId}`);
         const inputs = row.querySelectorAll('.rating-input');
@@ -616,9 +609,6 @@
         } catch (e) { alert("Network error"); btn.disabled = false; }
     }
 
-    /**
-     * Saves round statistics for a single team.
-     */
     async function updateTeamStats(event, teamId, startsInSemis) {
         event.preventDefault();
         const form = event.target;
@@ -652,9 +642,6 @@
         } catch (e) { alert("Connection error"); btn.disabled = false; }
     }
 
-    /**
-     * Master function: Saves ALL team rounds and player ratings in a single batch operation.
-     */
     async function saveAllChanges() {
         const btn = document.getElementById('saveAllBtn');
         const originalText = btn.innerText;
@@ -662,7 +649,6 @@
         btn.disabled = true;
 
         try {
-            // Collect Team Promises
             const teamForms = document.querySelectorAll('.team-stats-form');
             const teamPromises = Array.from(teamForms).map(form => {
                 const teamId = form.getAttribute('data-team-id');
@@ -687,7 +673,6 @@
                 });
             });
 
-            // Collect Player Promises
             const playerRows = document.querySelectorAll('.player-rating-row');
             const playerPromises = Array.from(playerRows).map(row => {
                 const playerId = row.getAttribute('data-player-id');
@@ -727,7 +712,6 @@
         }
     }
 
-    // Modal click outside listener
     document.addEventListener('click', function(event) {
         if (event.target.classList.contains('modal-overlay')) {
             closeAddTeamsModal();

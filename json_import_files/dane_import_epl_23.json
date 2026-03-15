@@ -1,0 +1,30 @@
+{
+  "teams": [
+    {
+      "name": "Monte",
+      "logo_url": "https://img-cdn.hltv.org/teamlogo/2tc9n4fHkiRIX2FiJSkhgt.png?ixlib=java-2.1.0&w=100&s=35b0f1f1725e21bc55bb9a3f6edb344e",
+      "players": [
+        {
+          "nickname": "Rainwaker",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/VOz-KshooS1PNN6BHH4FlD.png?ixlib=java-2.1.0&w=400&s=188a2c564c2a369d73897987b25f395f"
+        },
+        {
+          "nickname": "Bymas",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/RbNnp0DpRLb5703phEBXDh.png?ixlib=java-2.1.0&w=400&s=5bbe3105c495c7ae8260009620ee7ae1"
+        },
+        {
+          "nickname": "afro",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/bcqrKzWEiMOw0cZ4v-jhhX.png?ixlib=java-2.1.0&w=400&s=2869872dac00fe76245e3d2b431a2ac2"
+        },
+        {
+          "nickname": "Gizmy",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/GrU5oOJaKtw3dQy80x43Cx.png?ixlib=java-2.1.0&w=400&s=b534362b3a5b4542d092fa7e3465eb36"
+        },
+        {
+          "nickname": "AZUWU",
+          "photo_url": "https://img-cdn.hltv.org/playerbodyshot/0IH9t5RmINJhyZyzWAQn-8.png?ixlib=java-2.1.0&w=400&s=41da163be6380331eed305c97eba03b3"
+        }
+      ]
+    }
+  ]
+}
