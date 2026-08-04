@@ -24,10 +24,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     try:
         while True:
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            await websocket.send_json({
-                "status": "Online",
-                "timestamp": now
-            })
+            await websocket.send_json({"status": "Online", "timestamp": now})
             # Wait for the next ping from the client before sending the next update
             await websocket.receive_text()
     except WebSocketDisconnect:

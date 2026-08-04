@@ -19,8 +19,11 @@ router = APIRouter(tags=["Matches"])
 # MATCH CRUD OPERATIONS
 # ==========================================
 
+
 @router.post("/api/matches/", response_model=schemas.Match)
-def create_match(match: schemas.MatchCreate, db: Session = Depends(get_db)) -> models.Match:
+def create_match(
+    match: schemas.MatchCreate, db: Session = Depends(get_db)
+) -> models.Match:
     """
     Creates a new match in the database.
 
@@ -49,12 +52,16 @@ def get_matches(db: Session = Depends(get_db)) -> List[models.Match]:
     Returns:
         List[models.Match]: A list of matches with eager-loaded relationships.
     """
-    return db.query(models.Match).options(
-        joinedload(models.Match.tournament),
-        joinedload(models.Match.team1),
-        joinedload(models.Match.team2),
-        joinedload(models.Match.maps)
-    ).all()
+    return (
+        db.query(models.Match)
+        .options(
+            joinedload(models.Match.tournament),
+            joinedload(models.Match.team1),
+            joinedload(models.Match.team2),
+            joinedload(models.Match.maps),
+        )
+        .all()
+    )
 
 
 @router.get("/api/matches/{match_id}", response_model=schemas.MatchWithDetails)
@@ -72,12 +79,17 @@ def get_match(match_id: int, db: Session = Depends(get_db)) -> models.Match:
     Raises:
         HTTPException: If the match with the specified ID does not exist (404).
     """
-    match = db.query(models.Match).options(
-        joinedload(models.Match.tournament),
-        joinedload(models.Match.team1),
-        joinedload(models.Match.team2),
-        joinedload(models.Match.maps)
-    ).filter(models.Match.id == match_id).first()
+    match = (
+        db.query(models.Match)
+        .options(
+            joinedload(models.Match.tournament),
+            joinedload(models.Match.team1),
+            joinedload(models.Match.team2),
+            joinedload(models.Match.maps),
+        )
+        .filter(models.Match.id == match_id)
+        .first()
+    )
 
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
@@ -85,7 +97,9 @@ def get_match(match_id: int, db: Session = Depends(get_db)) -> models.Match:
 
 
 @router.put("/api/matches/{match_id}", response_model=schemas.Match)
-def update_match(match_id: int, match: schemas.MatchUpdate, db: Session = Depends(get_db)) -> models.Match:
+def update_match(
+    match_id: int, match: schemas.MatchUpdate, db: Session = Depends(get_db)
+) -> models.Match:
     """
     Updates the data of an existing match.
 
@@ -143,8 +157,11 @@ def delete_match(match_id: int, db: Session = Depends(get_db)) -> Dict[str, str]
 # PLAYER RATINGS (LEGACY)
 # ==========================================
 
+
 @router.post("/api/player_ratings/", response_model=schemas.PlayerRating)
-def create_player_rating(rating: schemas.PlayerRatingCreate, db: Session = Depends(get_db)) -> models.PlayerRating:
+def create_player_rating(
+    rating: schemas.PlayerRatingCreate, db: Session = Depends(get_db)
+) -> models.PlayerRating:
     """
     Adds a new rating or updates an existing rating for a player in a specific match.
 
@@ -159,10 +176,14 @@ def create_player_rating(rating: schemas.PlayerRatingCreate, db: Session = Depen
         HTTPException: If the associated match or player does not exist (404).
     """
     # Check if a rating already exists for this player in this match
-    existing_rating = db.query(models.PlayerRating).filter(
-        models.PlayerRating.match_id == rating.match_id,
-        models.PlayerRating.player_id == rating.player_id
-    ).first()
+    existing_rating = (
+        db.query(models.PlayerRating)
+        .filter(
+            models.PlayerRating.match_id == rating.match_id,
+            models.PlayerRating.player_id == rating.player_id,
+        )
+        .first()
+    )
 
     if existing_rating:
         # Update existing rating
@@ -177,7 +198,9 @@ def create_player_rating(rating: schemas.PlayerRatingCreate, db: Session = Depen
         raise HTTPException(status_code=404, detail="Match not found")
 
     # Validate that the player exists
-    player = db.query(models.Player).filter(models.Player.id == rating.player_id).first()
+    player = (
+        db.query(models.Player).filter(models.Player.id == rating.player_id).first()
+    )
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
 

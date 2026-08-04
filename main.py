@@ -26,7 +26,7 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="CS2 Player Tracker",
     version="1.0.0",
-    description="Advanced ranking and tournament management API for Counter-Strike 2."
+    description="Advanced ranking and tournament management API for Counter-Strike 2.",
 )
 
 # Mount static files directory (for CSS, images, etc.)

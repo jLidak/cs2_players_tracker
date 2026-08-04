@@ -32,7 +32,9 @@ def get_tournaments(db: Session = Depends(get_db)) -> List[models.Tournament]:
 
 
 @router.post("/api/tournaments/", response_model=schemas.Tournament)
-def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depends(get_db)) -> models.Tournament:
+def create_tournament(
+    tournament: schemas.TournamentCreate, db: Session = Depends(get_db)
+) -> models.Tournament:
     """
     Creates a new tournament after validating the provided phase weights.
 
@@ -48,30 +50,42 @@ def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depend
     """
     # 1. Validate standard path weights
     total_phase_weight = (
-        tournament.weight_group +
-        tournament.weight_quarters +
-        tournament.weight_semis +
-        tournament.weight_final
+        tournament.weight_group
+        + tournament.weight_quarters
+        + tournament.weight_semis
+        + tournament.weight_final
     )
 
     if abs(total_phase_weight - 1.0) > 0.001:
         raise HTTPException(
             status_code=400,
-            detail=f"The sum of standard phase weights (Group+QF+SF+Final) must equal 1.0. Current: {total_phase_weight}"
+            detail=f"The sum of standard phase weights (Group+QF+SF+Final) must equal 1.0. Current: {total_phase_weight}",
         )
 
     # 2. Validate shortcut path weights (only applicable for 'Bracket 6 teams')
     if tournament.bracket_type == "Bracket 6 teams":
-        wg = tournament.weight_group_override if tournament.weight_group_override is not None else 0.0
-        ws = tournament.weight_semis_override if tournament.weight_semis_override is not None else 0.0
-        wf = tournament.weight_final_override if tournament.weight_final_override is not None else 0.0
+        wg = (
+            tournament.weight_group_override
+            if tournament.weight_group_override is not None
+            else 0.0
+        )
+        ws = (
+            tournament.weight_semis_override
+            if tournament.weight_semis_override is not None
+            else 0.0
+        )
+        wf = (
+            tournament.weight_final_override
+            if tournament.weight_final_override is not None
+            else 0.0
+        )
 
         if wg > 0 or ws > 0 or wf > 0:
             total_override = wg + ws + wf
             if abs(total_override - 1.0) > 0.001:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"The sum of override weights (Group Override + SF Override + Final Override) must equal 1.0. Current: {total_override}"
+                    detail=f"The sum of override weights (Group Override + SF Override + Final Override) must equal 1.0. Current: {total_override}",
                 )
 
     db_tournament = models.Tournament(**tournament.model_dump())
@@ -85,12 +99,14 @@ def create_tournament(tournament: schemas.TournamentCreate, db: Session = Depend
         db.rollback()
         raise HTTPException(
             status_code=400,
-            detail=f"A tournament named '{tournament.name}' already exists in the database!"
+            detail=f"A tournament named '{tournament.name}' already exists in the database!",
         )
 
 
 @router.put("/api/tournaments/{tournament_id}", response_model=schemas.Tournament)
-def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Session = Depends(get_db)) -> models.Tournament:
+def update_tournament(
+    tournament_id: int, data: schemas.TournamentUpdate, db: Session = Depends(get_db)
+) -> models.Tournament:
     """
     Updates an existing tournament and ensures phase weight integrity is maintained.
 
@@ -105,30 +121,44 @@ def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Se
     Raises:
         HTTPException: If the tournament is not found (404), weights are invalid (400), or a name collision occurs (400).
     """
-    tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
+    tournament = (
+        db.query(models.Tournament)
+        .filter(models.Tournament.id == tournament_id)
+        .first()
+    )
 
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
 
     # Check if standard weights are being modified and validate their sum
-    weights_to_check = ['weight_group', 'weight_quarters', 'weight_semis', 'weight_final']
+    weights_to_check = [
+        "weight_group",
+        "weight_quarters",
+        "weight_semis",
+        "weight_final",
+    ]
     if any(getattr(data, w) is not None for w in weights_to_check):
         proposed_weights = {}
         for w in weights_to_check:
             new_val = getattr(data, w)
-            proposed_weights[w] = new_val if new_val is not None else getattr(tournament, w)
+            proposed_weights[w] = (
+                new_val if new_val is not None else getattr(tournament, w)
+            )
 
         total = sum(proposed_weights.values())
         if abs(total - 1.0) > 0.001:
             raise HTTPException(
                 status_code=400,
-                detail=f"Validation Error: The sum of standard phase weights must equal 1.0. Your proposed sum is: {total:.2f}"
+                detail=f"Validation Error: The sum of standard phase weights must equal 1.0. Your proposed sum is: {total:.2f}",
             )
 
-    effective_bracket_type = data.bracket_type if data.bracket_type is not None else tournament.bracket_type
+    effective_bracket_type = (
+        data.bracket_type if data.bracket_type is not None else tournament.bracket_type
+    )
 
     # Validate override weights if the tournament uses the 'Bracket 6 teams' format
     if effective_bracket_type == "Bracket 6 teams":
+
         def get_val(attr_name):
             val = getattr(data, attr_name)
             if val is not None:
@@ -136,16 +166,16 @@ def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Se
             val = getattr(tournament, attr_name)
             return val if val is not None else 0.0
 
-        wg = get_val('weight_group_override')
-        ws = get_val('weight_semis_override')
-        wf = get_val('weight_final_override')
+        wg = get_val("weight_group_override")
+        ws = get_val("weight_semis_override")
+        wf = get_val("weight_final_override")
 
         if wg > 0 or ws > 0 or wf > 0:
             total_override = wg + ws + wf
             if abs(total_override - 1.0) > 0.001:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Validation Error: The sum of override weights must equal 1.0. Currently it is: {total_override:.2f}"
+                    detail=f"Validation Error: The sum of override weights must equal 1.0. Currently it is: {total_override:.2f}",
                 )
 
     # Apply valid updates to the model
@@ -159,7 +189,10 @@ def update_tournament(tournament_id: int, data: schemas.TournamentUpdate, db: Se
         return tournament
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=400, detail="A tournament with this name already exists in the database!")
+        raise HTTPException(
+            status_code=400,
+            detail="A tournament with this name already exists in the database!",
+        )
 
 
 @router.delete("/api/tournaments/{tournament_id}")
@@ -177,7 +210,11 @@ def delete_tournament(tournament_id: int, db: Session = Depends(get_db)):
     Raises:
         HTTPException: If the tournament is not found (404).
     """
-    tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
+    tournament = (
+        db.query(models.Tournament)
+        .filter(models.Tournament.id == tournament_id)
+        .first()
+    )
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
 
@@ -188,9 +225,7 @@ def delete_tournament(tournament_id: int, db: Session = Depends(get_db)):
 
 @router.post("/api/tournaments/{tournament_id}/add_team")
 def add_team_to_tournament(
-    tournament_id: int,
-    data: schemas.AddTeamToTournament,
-    db: Session = Depends(get_db)
+    tournament_id: int, data: schemas.AddTeamToTournament, db: Session = Depends(get_db)
 ):
     """
     Registers a team to participate in a tournament or updates their phase advancement and round counts.
@@ -206,14 +241,22 @@ def add_team_to_tournament(
     Raises:
         HTTPException: If the tournament is not found (404).
     """
-    tournament = db.query(models.Tournament).filter(models.Tournament.id == tournament_id).first()
+    tournament = (
+        db.query(models.Tournament)
+        .filter(models.Tournament.id == tournament_id)
+        .first()
+    )
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
 
-    exists = db.query(models.TournamentTeam).filter(
-        models.TournamentTeam.tournament_id == tournament_id,
-        models.TournamentTeam.team_id == data.team_id
-    ).first()
+    exists = (
+        db.query(models.TournamentTeam)
+        .filter(
+            models.TournamentTeam.tournament_id == tournament_id,
+            models.TournamentTeam.team_id == data.team_id,
+        )
+        .first()
+    )
 
     if exists:
         # Update existing participation record
@@ -244,7 +287,7 @@ def add_team_to_tournament(
             rounds_quarters=data.rounds_quarters,
             rounds_semis=data.rounds_semis,
             rounds_final=data.rounds_final,
-            rounds_third_place=data.rounds_third_place
+            rounds_third_place=data.rounds_third_place,
         )
         db.add(new_entry)
 
@@ -254,8 +297,7 @@ def add_team_to_tournament(
 
 @router.post("/api/performances/", response_model=schemas.PlayerTournamentPerformance)
 def set_player_performance(
-    perf: schemas.PlayerTournamentPerformanceCreate,
-    db: Session = Depends(get_db)
+    perf: schemas.PlayerTournamentPerformanceCreate, db: Session = Depends(get_db)
 ) -> models.PlayerTournamentPerformance:
     """
     Saves or updates a player's individual rating performance across different tournament phases.
@@ -267,10 +309,14 @@ def set_player_performance(
     Returns:
         models.PlayerTournamentPerformance: The newly created or updated performance record.
     """
-    existing = db.query(models.PlayerTournamentPerformance).filter(
-        models.PlayerTournamentPerformance.tournament_id == perf.tournament_id,
-        models.PlayerTournamentPerformance.player_id == perf.player_id
-    ).first()
+    existing = (
+        db.query(models.PlayerTournamentPerformance)
+        .filter(
+            models.PlayerTournamentPerformance.tournament_id == perf.tournament_id,
+            models.PlayerTournamentPerformance.player_id == perf.player_id,
+        )
+        .first()
+    )
 
     if existing:
         # Hard overwrite allows resetting ratings back to null if needed
@@ -292,7 +338,9 @@ def set_player_performance(
 
 
 @router.delete("/api/tournaments/{tournament_id}/teams/{team_id}")
-def remove_team_from_tournament(tournament_id: int, team_id: int, db: Session = Depends(get_db)):
+def remove_team_from_tournament(
+    tournament_id: int, team_id: int, db: Session = Depends(get_db)
+):
     """
     Removes a team's participation from a specific tournament.
     Also cascades the deletion to remove any recorded performance ratings for that team's players in this tournament.
@@ -308,23 +356,31 @@ def remove_team_from_tournament(tournament_id: int, team_id: int, db: Session = 
     Raises:
         HTTPException: If the team is not participating in the tournament (404).
     """
-    participation = db.query(models.TournamentTeam).filter(
-        models.TournamentTeam.tournament_id == tournament_id,
-        models.TournamentTeam.team_id == team_id
-    ).first()
+    participation = (
+        db.query(models.TournamentTeam)
+        .filter(
+            models.TournamentTeam.tournament_id == tournament_id,
+            models.TournamentTeam.team_id == team_id,
+        )
+        .first()
+    )
 
     if not participation:
-        raise HTTPException(status_code=404, detail="This team is not participating in this tournament.")
+        raise HTTPException(
+            status_code=404, detail="This team is not participating in this tournament."
+        )
 
     # Fetch all players currently associated with this team
-    team_players = db.query(models.Player).filter(models.Player.team_id == team_id).all()
+    team_players = (
+        db.query(models.Player).filter(models.Player.team_id == team_id).all()
+    )
     player_ids = [p.id for p in team_players]
 
     # Delete player performance ratings associated with this tournament
     if player_ids:
         db.query(models.PlayerTournamentPerformance).filter(
             models.PlayerTournamentPerformance.tournament_id == tournament_id,
-            models.PlayerTournamentPerformance.player_id.in_(player_ids)
+            models.PlayerTournamentPerformance.player_id.in_(player_ids),
         ).delete(synchronize_session=False)
 
     # Delete team participation record

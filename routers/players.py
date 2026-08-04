@@ -20,8 +20,11 @@ router = APIRouter(tags=["Players"])
 # PLAYER CRUD OPERATIONS
 # ==========================================
 
+
 @router.post("/api/players/", response_model=schemas.Player)
-def create_player(player: schemas.PlayerCreate, db: Session = Depends(get_db)) -> models.Player:
+def create_player(
+    player: schemas.PlayerCreate, db: Session = Depends(get_db)
+) -> models.Player:
     """
     Creates a new player in the database.
 
@@ -35,9 +38,15 @@ def create_player(player: schemas.PlayerCreate, db: Session = Depends(get_db)) -
     Raises:
         HTTPException: If the nickname is already taken (400) or if the assigned team is not found (404).
     """
-    existing_player = db.query(models.Player).filter(models.Player.nickname == player.nickname).first()
+    existing_player = (
+        db.query(models.Player)
+        .filter(models.Player.nickname == player.nickname)
+        .first()
+    )
     if existing_player:
-        raise HTTPException(status_code=400, detail="Player with this nickname already exists.")
+        raise HTTPException(
+            status_code=400, detail="Player with this nickname already exists."
+        )
 
     if player.team_id:
         team = db.query(models.Team).filter(models.Team.id == player.team_id).first()
@@ -81,7 +90,12 @@ def get_player(player_id: int, db: Session = Depends(get_db)) -> models.Player:
     Raises:
         HTTPException: If the player with the specified ID does not exist (404).
     """
-    player = db.query(models.Player).options(joinedload(models.Player.team)).filter(models.Player.id == player_id).first()
+    player = (
+        db.query(models.Player)
+        .options(joinedload(models.Player.team))
+        .filter(models.Player.id == player_id)
+        .first()
+    )
 
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
@@ -90,7 +104,9 @@ def get_player(player_id: int, db: Session = Depends(get_db)) -> models.Player:
 
 
 @router.put("/api/players/{player_id}", response_model=schemas.Player)
-def update_player(player_id: int, player_data: schemas.PlayerUpdate, db: Session = Depends(get_db)) -> models.Player:
+def update_player(
+    player_id: int, player_data: schemas.PlayerUpdate, db: Session = Depends(get_db)
+) -> models.Player:
     """
     Updates an existing player's details (nickname, team affiliation, photo URL).
 
@@ -110,7 +126,9 @@ def update_player(player_id: int, player_data: schemas.PlayerUpdate, db: Session
         raise HTTPException(status_code=404, detail="Player not found")
 
     if player_data.team_id is not None:
-        team = db.query(models.Team).filter(models.Team.id == player_data.team_id).first()
+        team = (
+            db.query(models.Team).filter(models.Team.id == player_data.team_id).first()
+        )
         if not team:
             raise HTTPException(status_code=404, detail="Team not found")
 
@@ -150,6 +168,7 @@ def delete_player(player_id: int, db: Session = Depends(get_db)) -> Dict[str, st
 # ==========================================
 # SEARCH OPERATIONS
 # ==========================================
+
 
 @router.get("/api/search/players/", response_model=List[schemas.PlayerWithTeam])
 def search_players(query: str, db: Session = Depends(get_db)) -> List[models.Player]:

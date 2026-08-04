@@ -19,8 +19,7 @@ SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./cs2_tracker.db"
 
 # check_same_thread is set to False specifically for SQLite in FastAPI
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -36,7 +35,7 @@ def get_db() -> Generator[Session, None, None]:
         Session: An instance of the SQLAlchemy session.
 
     Notes:
-        Automatically closes the session after the request is completed, 
+        Automatically closes the session after the request is completed,
         ensuring safe database connections.
     """
     db = SessionLocal()

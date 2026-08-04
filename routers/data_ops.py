@@ -68,18 +68,22 @@ def export_database(db: Session = Depends(get_db)):
         teams=[schemas.Team.model_validate(x) for x in teams],
         tournaments=[schemas.Tournament.model_validate(x) for x in tournaments],
         players=[schemas.Player.model_validate(x) for x in players],
-        tournament_teams=[schemas.TournamentTeam.model_validate(x) for x in tournament_teams],
-        player_performances=[schemas.PlayerTournamentPerformance.model_validate(x) for x in performances],
+        tournament_teams=[
+            schemas.TournamentTeam.model_validate(x) for x in tournament_teams
+        ],
+        player_performances=[
+            schemas.PlayerTournamentPerformance.model_validate(x) for x in performances
+        ],
         matches=[schemas.Match.model_validate(x) for x in matches],
         maps=[schemas.Map.model_validate(x) for x in maps],
-        player_ratings=[schemas.PlayerRating.model_validate(x) for x in ratings]
+        player_ratings=[schemas.PlayerRating.model_validate(x) for x in ratings],
     )
 
     json_str = export_data.model_dump_json(indent=2)
     return Response(
         content=json_str,
         media_type="application/json",
-        headers={"Content-Disposition": "attachment; filename=full_backup.json"}
+        headers={"Content-Disposition": "attachment; filename=full_backup.json"},
     )
 
 
@@ -159,7 +163,9 @@ def import_auto_from_files(db: Session = Depends(get_db)):
     """
     base_folder = "json_import_files"
     if not os.path.exists(base_folder):
-        raise HTTPException(status_code=404, detail="Directory 'json_import_files' does not exist.")
+        raise HTTPException(
+            status_code=404, detail="Directory 'json_import_files' does not exist."
+        )
 
     try:
         # Import Teams
@@ -176,9 +182,15 @@ def import_auto_from_files(db: Session = Depends(get_db)):
         if os.path.exists(players_file):
             with open(players_file, "r", encoding="utf-8") as f:
                 for p in json.load(f):
-                    if not db.query(models.Player).filter_by(nickname=p["nickname"]).first():
+                    if (
+                        not db.query(models.Player)
+                        .filter_by(nickname=p["nickname"])
+                        .first()
+                    ):
                         # Nullify team_id if the team does not exist in DB
-                        if p.get("team_id") and not db.query(models.Team).get(p["team_id"]):
+                        if p.get("team_id") and not db.query(models.Team).get(
+                            p["team_id"]
+                        ):
                             p["team_id"] = None
                         db.add(models.Player(**p))
                 db.commit()
@@ -188,15 +200,25 @@ def import_auto_from_files(db: Session = Depends(get_db)):
         if os.path.exists(tournaments_file):
             with open(tournaments_file, "r", encoding="utf-8") as f:
                 for t in json.load(f):
-                    if not db.query(models.Tournament).filter_by(name=t["name"]).first():
+                    if (
+                        not db.query(models.Tournament)
+                        .filter_by(name=t["name"])
+                        .first()
+                    ):
                         # Key mapping for older JSON versions
                         if "weight_overall" in t:
                             t["weight_group"] = t.pop("weight_overall")
 
                         valid_keys = {
-                            "name", "weight", "bracket_type", "weight_group",
-                            "weight_quarters", "weight_semis", "weight_final",
-                            "weight_semis_override", "weight_final_override"
+                            "name",
+                            "weight",
+                            "bracket_type",
+                            "weight_group",
+                            "weight_quarters",
+                            "weight_semis",
+                            "weight_final",
+                            "weight_semis_override",
+                            "weight_final_override",
                         }
                         clean_t = {k: v for k, v in t.items() if k in valid_keys}
                         db.add(models.Tournament(**clean_t))
@@ -208,11 +230,13 @@ def import_auto_from_files(db: Session = Depends(get_db)):
             with open(matches_file, "r", encoding="utf-8") as f:
                 for m in json.load(f):
                     m_date = date_type.fromisoformat(m["date"])
-                    match_exists = db.query(models.Match).filter_by(
-                        date=m_date,
-                        team1_id=m["team1_id"],
-                        team2_id=m["team2_id"]
-                    ).first()
+                    match_exists = (
+                        db.query(models.Match)
+                        .filter_by(
+                            date=m_date, team1_id=m["team1_id"], team2_id=m["team2_id"]
+                        )
+                        .first()
+                    )
 
                     if not match_exists:
                         if db.query(models.Tournament).get(m["tournament_id"]):
@@ -229,10 +253,13 @@ def import_auto_from_files(db: Session = Depends(get_db)):
                     if "rating_overall" in p:
                         p["rating_group"] = p.pop("rating_overall")
 
-                    perf_exists = db.query(models.PlayerTournamentPerformance).filter_by(
-                        player_id=p["player_id"],
-                        tournament_id=p["tournament_id"]
-                    ).first()
+                    perf_exists = (
+                        db.query(models.PlayerTournamentPerformance)
+                        .filter_by(
+                            player_id=p["player_id"], tournament_id=p["tournament_id"]
+                        )
+                        .first()
+                    )
 
                     if not perf_exists:
                         db.add(models.PlayerTournamentPerformance(**p))
@@ -265,12 +292,16 @@ def import_from_json(data: schemas.ImportData, db: Session = Depends(get_db)):
 
         # 2. Process players associated with this team
         for p_data in t_data.players:
-            player = db.query(models.Player).filter(models.Player.nickname == p_data.nickname).first()
+            player = (
+                db.query(models.Player)
+                .filter(models.Player.nickname == p_data.nickname)
+                .first()
+            )
             if not player:
                 player = models.Player(
                     nickname=p_data.nickname,
                     photo_url=p_data.photo_url,
-                    team_id=team.id
+                    team_id=team.id,
                 )
                 db.add(player)
                 count_players += 1

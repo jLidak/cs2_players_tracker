@@ -12,10 +12,7 @@ import models
 import schemas
 from database import get_db
 
-router = APIRouter(
-    prefix="/api/teams",
-    tags=["Teams"]
-)
+router = APIRouter(prefix="/api/teams", tags=["Teams"])
 
 
 @router.post("/", response_model=schemas.Team)
@@ -35,7 +32,9 @@ def create_team(team: schemas.TeamCreate, db: Session = Depends(get_db)) -> mode
     """
     existing = db.query(models.Team).filter(models.Team.name == team.name).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Team with this name already exists")
+        raise HTTPException(
+            status_code=400, detail="Team with this name already exists"
+        )
 
     db_team = models.Team(**team.model_dump())
     db.add(db_team)
@@ -80,7 +79,9 @@ def get_team(team_id: int, db: Session = Depends(get_db)) -> models.Team:
 
 
 @router.put("/{team_id}", response_model=schemas.Team)
-def update_team(team_id: int, team: schemas.TeamUpdate, db: Session = Depends(get_db)) -> models.Team:
+def update_team(
+    team_id: int, team: schemas.TeamUpdate, db: Session = Depends(get_db)
+) -> models.Team:
     """
     Updates an existing team's details.
 
