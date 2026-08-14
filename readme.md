@@ -1,62 +1,61 @@
-# CS2 Player Tracker
+# 🎯 CS2 Player Tracker
 
-Aplikacja webowa służąca do zbierania informacji o występach graczy gry Counter Strike 2, by na ich podstawie ułożyć ranking najlepszych graczy. Umożliwia ona:
-* Dodawanie i edycja graczy, drużyn, turniejów oraz meczów za pomocą JSON oraz formularzy. Można również załadować wstępną bazę za pomocą jednego przycisku w zakładce "/import-json".
-* Dodawanie ocen dla graczy dla danego meczu.
-* Dodawanie punktów dla graczy za dany turniej, które odzwierciedlają ich dokonania podczas tego wydarzenia. Punkty te po pomnożeniu przez wagę turnieju, są dodawane do rankingu graczy.
+![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)
+![SQLite](https://img.shields.io/badge/SQLite-07405E?style=flat&logo=sqlite)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-red.svg)
+![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
 
-## Technologie
+**Live Demo:** [Link to your deployed app here - e.g., Render/PythonAnywhere]
 
-* **Język:** Python 3.12+
-* **Framework Webowy:** FastAPI
-* **Baza Danych:** SQLite (via SQLAlchemy 2.0)
-* **Frontend:** Jinja2 Templates (HTML/CSS)
-* **Testy:** Pytest
-* **Serwer:** Uvicorn
+**CS2 Player Tracker** is a comprehensive, full-stack web application designed to collect, process, and analyze Counter-Strike 2 player performances across custom tournaments. It features a sophisticated, dynamic ranking algorithm that evaluates players based on their match ratings, tournament prestige, and bracket progression.
 
-## Instalacja i Uruchomienie
+## ✨ Key Features
 
-Upewnij się, że masz zainstalowanego Pythona. Następnie wykonaj w terminalu:
+* **🏆 Dynamic Global Ranking:** Calculates player standings using a custom mathematical model (combining HLTV 2.0 ratings, phase bonuses, rounds multipliers, and individual tournament weights).
+* **🧪 Custom Ranking Simulator:** An interactive sandbox allowing users to tweak core algorithm variables (rating damping, rounds root, base multipliers) and instantly see the simulated impact on the global leaderboard.
+* **⚙️ Tournament Management:** Complete administrative control over tournament creation, supporting varying bracket types (8-team, 6-team, 16-team), phase weights, and third-place matches.
+* **👥 Player & Team Database:** Full CRUD (Create, Read, Update, Delete) capabilities for teams and players, including detailed statistical drill-downs per participant[cite: 1].
+* **🔄 Data Portability:** Built-in JSON import/export functionality for complete database backups, restores, and initial data seeding[cite: 1].
+* **🔌 Real-Time Status:** WebSocket integration for live server status and latency monitoring[cite: 1].
 
-```bash
-# Utworzenie środowiska wirtualnego
-python -m venv venv
+## 📸 Screenshots
 
-# Aktywacja środowiska 
-.\venv\Scripts\activate
+*(A visual overview of the application's core modules)*
 
-# Instalacja zależności
-pip install -r requirements.txt
+### Global Player Ranking
+![Global Player Ranking](assets/ranking_screen.png)
 
-# Uruchomienie serwera
-uvicorn main:app --reload
+### Custom Ranking Creator (Algorithm Sandbox)
+![Custom Ranking Creator](assets/custom_ranking.png)
 
-# Uruchomienie testów
-pytest
-```
+### Tournament Management & Results Input
+![Tournament Details](assets/tournament_details.png)
 
+### Tournament Configuration
+![Tournament Creation](assets/tournaments_screen.png)
 
-## Struktura Projektu
+### Player Points Drill-Down
+![Ranking Details](assets/ranking_details_screen.png)
 
-Struktura plików oparta na podziale na routery i moduły logiczne:
+### Database Management
+![Import and Export](assets/database_import_and_export.png)
 
-```text
-projekt/
-├── json_import_files/      # Pliki JSON do wstępnego zasilenia bazy (import)
-├── routers/                # Logika endpointów API (podział na moduły)
-│   ├── data_ops.py         # Import/Export, operacje masowe
-│   ├── matches.py          # Obsługa meczów i ocen
-│   ├── players.py          # CRUD graczy, wyszukiwanie
-│   ├── ranking.py          # Algorytm obliczania rankingu
-│   ├── teams.py            # CRUD drużyn
-│   ├── tournaments.py      # CRUD turniejów
-│   ├── views.py            # Widoki HTML (Jinja2)
-│   └── websocket.py        # Obsługa WebSocket (status serwera)
-├── static/                 # Pliki statyczne (CSS, obrazy)
-├── templates/              # Szablony HTML
-├── database.py             # Konfiguracja połączenia z bazą danych
-├── main.py                 # Główny punkt wejścia aplikacji
-├── models.py               # Modele bazy danych (SQLAlchemy Mapped)
-├── schemas.py              # Schematy walidacji danych (Pydantic)
-├── test_all.py             # Testy jednostkowe i integracyjne API
-└── requirements.txt        # Lista zależności
+## 🛠️ Technology Stack
+
+* **Backend:** Python 3.12+, FastAPI[cite: 1]
+* **Database:** SQLite, SQLAlchemy 2.0 (ORM)[cite: 1]
+* **Data Validation:** Pydantic[cite: 1]
+* **Frontend:** HTML5, CSS3, Vanilla JavaScript, Jinja2 Templates[cite: 1]
+* **Testing:** Pytest (Unit & Integration tests)[cite: 1]
+* **Server:** Uvicorn[cite: 1]
+* **Code Quality:** Black (Formatter)
+
+## 🚀 Installation & Setup
+
+Ensure you have Python 3.12+ installed on your machine.
+
+1. **Clone the repository:**
+   ```bash
+   git clone [https://github.com/yourusername/cs2-player-tracker.git](https://github.com/yourusername/cs2-player-tracker.git)
+   cd cs2-player-tracker
