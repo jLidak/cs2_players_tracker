@@ -64,7 +64,7 @@ Ensure you have Python 3.12+ installed on your machine.
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/cs2-player-tracker.git
+git clone https://github.com/jLidak/cs2-players-tracker.git
 cd cs2-player-tracker
 ```
 

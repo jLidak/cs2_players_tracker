@@ -175,7 +175,8 @@ def import_auto_from_files(db: Session = Depends(get_db)):
                 for t in json.load(f):
                     if not db.query(models.Team).filter_by(name=t["name"]).first():
                         db.add(models.Team(**t))
-                db.commit()
+                        db.commit()
+
 
         # Import Players
         players_file = f"{base_folder}/players.json"
@@ -193,7 +194,7 @@ def import_auto_from_files(db: Session = Depends(get_db)):
                         ):
                             p["team_id"] = None
                         db.add(models.Player(**p))
-                db.commit()
+                        db.commit()
 
         # Import Tournaments
         tournaments_file = f"{base_folder}/tournaments.json"
@@ -222,7 +223,8 @@ def import_auto_from_files(db: Session = Depends(get_db)):
                         }
                         clean_t = {k: v for k, v in t.items() if k in valid_keys}
                         db.add(models.Tournament(**clean_t))
-                db.commit()
+                        db.commit()
+
 
         # Import Matches (Legacy)
         matches_file = f"{base_folder}/matches.json"
@@ -242,7 +244,8 @@ def import_auto_from_files(db: Session = Depends(get_db)):
                         if db.query(models.Tournament).get(m["tournament_id"]):
                             m["date"] = m_date
                             db.add(models.Match(**m))
-                db.commit()
+                            db.commit()
+
 
         # Import Player Performances
         performances_file = f"{base_folder}/performances.json"
@@ -263,7 +266,8 @@ def import_auto_from_files(db: Session = Depends(get_db)):
 
                     if not perf_exists:
                         db.add(models.PlayerTournamentPerformance(**p))
-                db.commit()
+                        db.commit()
+
 
         return {"message": "Initial seed data has been successfully loaded."}
 
