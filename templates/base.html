@@ -262,7 +262,8 @@
         /**
          * Real-time WebSocket connection for server status and clock updates.
          */
-        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+        const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
         const statusDot = document.getElementById('status-dot');
         const serverStatus = document.getElementById('server-status');
         const serverTime = document.getElementById('server-time');
