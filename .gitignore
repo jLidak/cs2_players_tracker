@@ -6,3 +6,8 @@ cs2_tracker.db
 _projekt_cs2_tracker/
 templates/unused
 .env
+
+.idea/
+
+backups/
+temp/
