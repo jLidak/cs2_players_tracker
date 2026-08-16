@@ -30,11 +30,13 @@
         </form>
     </div>
 
-    <div class="card" style="border-left: 5px solid #2ecc71; margin-bottom: 20px;">
-        <h2>🔄 Initial Data</h2>
-        <p>Load default data from server files (<code>json_import_files</code> folder). Safe - does not delete existing data, only adds new data.</p>
-        <button onclick="autoImportFromFiles()" class="btn" style="background-color: #2ecc71; width: 100%; padding-top: 10px; margin-top: 10px;">
-            Load initial database
+    <div class="card" style="border-left: 5px solid #e74c3c;">
+        <h3>🗑️ Delete Database</h3>
+        <p style="color: #c0392b; margin-bottom: 15px;">
+            <strong>WARNING:</strong> This action will permanently delete all records from the database. This cannot be undone!
+        </p>
+        <button onclick="clearDatabase()" class="btn btn-danger" style="width: 100%;">
+            Delete all data
         </button>
     </div>
 
@@ -108,26 +110,28 @@
         }
     }
 
-    /**
-     * Triggers the backend process to load initial seed data from the server.
-     */
-    async function autoImportFromFiles() {
-        if (!confirm("Do you want to load initial data?")) return;
-
-        try {
-            const response = await fetch('/api/import/auto-from-files', { method: 'POST' });
-            const data = await response.json();
-
-            if (response.ok) {
-                alert(data.message);
-                window.location.reload();
-            } else {
-                alert("Error: " + data.detail);
-            }
-        } catch (e) {
-            alert("Network error.");
-        }
+    async function clearDatabase() {
+    if (!confirm("Are you ABSOLUTELY sure you want to delete ALL data?")) {
+        return;
     }
+
+    try {
+        const response = await fetch('/api/database/clear', {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            alert("Database cleared successfully.");
+            window.location.reload();
+        } else {
+            const data = await response.json();
+            alert("Error: " + data.detail);
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        alert("Network error occurred.");
+    }
+}
 
     /**
      * Handles parsing and uploading a specific JSON file containing only teams and players.
