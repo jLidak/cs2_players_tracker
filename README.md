@@ -6,7 +6,7 @@
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-red.svg)
 ![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
 
-**Live Demo:** [Link to your deployed app here - e.g., Render/PythonAnywhere]
+**Live Demo:** https://cs2-players-tracker.onrender.com/
 
 **CS2 Player Tracker** is a comprehensive, full-stack web application designed to collect, process, and analyze Counter-Strike 2 player performances across custom tournaments. It features a sophisticated, dynamic ranking algorithm that evaluates players based on their match ratings, tournament prestige, and bracket progression.
 
@@ -15,7 +15,7 @@
 - **🏆 Dynamic Global Ranking:** Calculates player standings using a custom mathematical model combining HLTV 2.0 ratings, phase bonuses, rounds multipliers, and individual tournament weights.
 - **🧪 Custom Ranking Simulator:** An interactive sandbox allowing users to tweak core algorithm variables such as rating damping, rounds root, and base multipliers and instantly see the simulated impact on the global leaderboard.
 - **⚙️ Tournament Management:** Complete administrative control over tournament creation, supporting varying bracket types (8-team, 6-team, 16-team), phase weights, and third-place matches.
-- **👥 Player & Team Database:** Full CRUD (Create, Read, Update, Delete) capabilities for teams and players, including detailed statistical drill-downs per participant.
+- **👥 Player & Team Database:** Full CRUD (Create, Read, Update, Delete) capabilities for teams and players.
 - **🔄 Data Portability:** Built-in JSON import/export functionality for complete database backups, restores, and initial data seeding.
 - **🔌 Real-Time Status:** WebSocket integration for live server status and latency monitoring.
 
